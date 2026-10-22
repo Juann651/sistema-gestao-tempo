@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>SGT</title><link rel="stylesheet" th:href="@{/style.css}"></head>
+<body>
+<main class="entrada"><form class="card" method="post" th:action="@{/login}">
+  <h2>Entrar no SGT</h2>
+  <div class="aviso" th:if="${erro != null}" th:text="${erro}"></div>
+  <div class="aviso ok" th:if="${ok != null}" th:text="${ok}"></div>
+  <label>E-mail<input type="email" name="email" required autocomplete="email"></label>
+  <label>Senha (mínimo 6 caracteres)<input type="password" name="senha" required minlength="6" autocomplete="current-password"></label>
+  <div class="acts"><button class="btn p">Entrar</button><button class="btn" th:formaction="@{/cadastro}">Criar conta</button></div>
+</form></main>
+</body></html>

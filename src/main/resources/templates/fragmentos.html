@@ -1,0 +1,11 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<header th:fragment="topo(pagina)">
+  <div><h1>SGT</h1><small>Organize seu tempo com inteligência</small></div>
+  <nav><a th:href="@{/}" th:classappend="${pagina == 'tarefas'} ? 'on'">Tarefas</a><a th:href="@{/agenda}" th:classappend="${pagina == 'agenda'} ? 'on'">Agenda</a><a th:href="@{/resumo}" th:classappend="${pagina == 'resumo'} ? 'on'">Resumo</a></nav>
+  <a class="btn s" th:href="@{/sair}">Sair</a>
+</header>
+<div th:fragment="aviso" class="aviso" th:if="${aviso != null}" th:text="${aviso}"></div>
+</body>
+</html>

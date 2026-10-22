@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>SGT</title><link rel="stylesheet" th:href="@{/style.css}"></head>
+<body>
+<header th:replace="~{fragmentos :: topo(${pagina})}"></header>
+<main>
+<div th:replace="~{fragmentos :: aviso}"></div>
+<div class="cols">
+  <div class="card" th:each="c : ${colunas}">
+    <div class="ph">
+      <h2><span class="dot" th:style="${'background:' + c.periodo().cor}"></span><span th:text="${c.periodo().rotulo}"></span></h2>
+      <form class="cap" method="post" th:action="@{/capacidade}"><input type="hidden" name="periodo" th:value="${c.periodo().codigo}">Capacidade <input type="number" name="minutos" min="0" step="15" th:value="${c.capacidade()}" onchange="this.form.submit()"> min</form>
+    </div>
+    <div class="bar"><i th:style="${'width:' + c.percentual() + '%;background:' + (c.excesso() > 0 ? '#dc2626' : c.periodo().cor)}"></i></div>
+    <div class="mu" th:text="${c.usado() + ' de ' + c.capacidade() + ' min'}"></div>
+    <div class="warn" th:if="${c.excesso() > 0}" th:text="${'Passou ' + c.excesso() + ' min da capacidade. Mova tarefas para outro turno.'}"></div>
+    <div class="t" th:each="t : ${c.tarefas()}" th:style="${'border-left-color:' + c.periodo().cor}">
+      <b th:text="${t.nome()}"></b>
+      <div class="mu" th:text="${t.duracao() + ' min · complexidade ' + t.comp().rotulo + ' · score ' + t.score()}"></div>
+      <form method="post" th:action="@{/tarefas/{id}/turno(id=${t.id()})}"><select name="periodo" aria-label="Mover para outro turno" onchange="this.form.submit()"><option th:each="p : ${periodos}" th:value="${p.codigo}" th:text="${p.rotulo}" th:selected="${p == c.periodo()}"></option></select></form>
+    </div>
+    <p class="mu" th:if="${#lists.isEmpty(c.tarefas())}">Nenhuma tarefa neste turno.</p>
+  </div>
+</div>
+</main>
+</body></html>

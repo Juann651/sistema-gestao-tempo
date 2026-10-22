@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>SGT</title><link rel="stylesheet" th:href="@{/style.css}"></head>
+<body>
+<header th:replace="~{fragmentos :: topo(${pagina})}"></header>
+<main>
+<div th:replace="~{fragmentos :: aviso}"></div>
+<div class="grid">
+  <form class="card" method="post" th:action="@{/tarefas}">
+    <h2 th:text="${edit != null} ? 'Editando tarefa' : 'Nova tarefa'">Nova tarefa</h2>
+    <input type="hidden" name="id" th:value="${edit?.id()}">
+    <label>Nome<input name="nome" required th:value="${edit?.nome()}"></label>
+    <label>Descrição<input name="descricao" th:value="${edit?.descricao()}"></label>
+    <div class="row2">
+      <label>Prioridade<select name="prioridade"><option th:each="n : ${niveis}" th:value="${n.peso}" th:text="${n.rotulo}" th:selected="${edit != null ? edit.prioridade() == n.peso : n.name() == 'MEDIA'}"></option></select></label>
+      <label>Urgência<select name="urgencia"><option th:each="n : ${niveis}" th:value="${n.peso}" th:text="${n.rotulo}" th:selected="${edit != null ? edit.urgencia() == n.peso : n.name() == 'MEDIA'}"></option></select></label>
+      <label>Complexidade<select name="complexidade"><option th:each="n : ${niveis}" th:value="${n.peso}" th:text="${n.rotulo}" th:selected="${edit != null ? edit.complexidade() == n.peso : n.name() == 'MEDIA'}"></option></select></label>
+      <label>Duração (min)<input type="number" name="duracao" min="1" required th:value="${edit != null} ? ${edit.duracao()} : 60"></label>
+    </div>
+    <label>Turno<select name="periodo"><option th:each="p : ${periodos}" th:value="${p.codigo}" th:text="${p.rotulo}" th:selected="${edit != null and edit.periodo() == p.codigo}"></option></select></label>
+    <div class="acts"><button class="btn p">Salvar tarefa</button><a class="btn" th:href="@{/}">Cancelar</a></div>
+  </form>
+  <div class="card">
+    <h2>Suas tarefas</h2>
+    <div class="mu">Ordenadas por score (prioridade × 2 + urgência × 3).</div>
+    <p class="mu" th:if="${#lists.isEmpty(tarefas)}">Nenhuma tarefa ainda. Cadastre a primeira ao lado.</p>
+    <div class="item" th:each="t : ${tarefas}" th:classappend="${t.concluida()} ? 'ok'">
+      <div><b th:text="${t.nome()}"></b>
+        <div class="tags">
+          <span class="pill" th:style="${'background:' + t.turno().cor + '22;color:' + t.turno().cor}" th:text="${t.turno().rotulo}"></span>
+          <span class="pill" th:classappend="${t.prio().css}" th:text="${t.prio().rotulo}"></span><span class="mu">prioridade</span>
+          <span class="pill" th:classappend="${t.urg().css}" th:text="${t.urg().rotulo}"></span><span class="mu">urgência</span>
+          <span class="pill" th:classappend="${t.scoreCss()}" th:text="${'score ' + t.score()}"></span>
+          <span class="mu" th:text="${t.duracao() + ' min'}"></span>
+        </div></div>
+      <div class="acts">
+        <a class="btn s" th:href="@{/(editar=${t.id()})}">Editar</a>
+        <form method="post" th:action="@{/tarefas/{id}/concluir(id=${t.id()})}"><input type="hidden" name="concluida" th:value="${!t.concluida()}"><button class="btn s p" th:text="${t.concluida()} ? 'Reabrir' : 'Concluir'"></button></form>
+        <form method="post" th:action="@{/tarefas/{id}/remover(id=${t.id()})}" onsubmit="return confirm('Remover esta tarefa?')"><button class="btn s d">Remover</button></form>
+      </div>
+    </div>
+  </div>
+</div>
+</main>
+</body></html>
