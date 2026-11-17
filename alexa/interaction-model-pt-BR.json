@@ -1,0 +1,232 @@
+{
+  "interactionModel": {
+    "languageModel": {
+      "invocationName": "meu s g t",
+      "intents": [
+        {
+          "name": "AMAZON.CancelIntent",
+          "samples": []
+        },
+        {
+          "name": "AMAZON.HelpIntent",
+          "samples": []
+        },
+        {
+          "name": "AMAZON.StopIntent",
+          "samples": []
+        },
+        {
+          "name": "AMAZON.FallbackIntent",
+          "samples": []
+        },
+        {
+          "name": "AMAZON.YesIntent",
+          "samples": []
+        },
+        {
+          "name": "AMAZON.NoIntent",
+          "samples": []
+        },
+        {
+          "name": "CriarIntent",
+          "slots": [
+            {
+              "name": "texto",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "criar tarefa {texto}",
+            "adicionar tarefa {texto}",
+            "adicione tarefa {texto}",
+            "nova tarefa {texto}",
+            "cadastrar tarefa {texto}",
+            "anotar tarefa {texto}"
+          ]
+        },
+        {
+          "name": "EditarIntent",
+          "slots": [
+            {
+              "name": "texto",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "editar {texto}",
+            "alterar {texto}",
+            "mudar {texto}",
+            "trocar {texto}",
+            "ajustar {texto}",
+            "atualizar {texto}"
+          ]
+        },
+        {
+          "name": "RenomearIntent",
+          "slots": [
+            {
+              "name": "texto",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "renomear {texto}",
+            "renomeie {texto}"
+          ]
+        },
+        {
+          "name": "MoverIntent",
+          "slots": [
+            {
+              "name": "texto",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "mover {texto}",
+            "mova {texto}",
+            "passar {texto}",
+            "transferir {texto}"
+          ]
+        },
+        {
+          "name": "IniciarIntent",
+          "slots": [
+            {
+              "name": "texto",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "iniciar {texto}",
+            "inicie {texto}",
+            "começar {texto}",
+            "comece {texto}"
+          ]
+        },
+        {
+          "name": "ConcluirIntent",
+          "slots": [
+            {
+              "name": "texto",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "concluir {texto}",
+            "conclua {texto}",
+            "finalizar {texto}",
+            "finalize {texto}",
+            "terminar {texto}",
+            "terminei {texto}"
+          ]
+        },
+        {
+          "name": "ReabrirIntent",
+          "slots": [
+            {
+              "name": "texto",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "reabrir {texto}",
+            "reabra {texto}"
+          ]
+        },
+        {
+          "name": "RemoverIntent",
+          "slots": [
+            {
+              "name": "texto",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "remover {texto}",
+            "remova {texto}",
+            "excluir {texto}",
+            "exclua {texto}",
+            "apagar {texto}",
+            "apague {texto}"
+          ]
+        },
+        {
+          "name": "CapacidadeIntent",
+          "slots": [
+            {
+              "name": "texto",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "capacidade {texto}",
+            "definir capacidade {texto}",
+            "mudar capacidade {texto}",
+            "alterar capacidade {texto}",
+            "ajustar capacidade {texto}"
+          ]
+        },
+        {
+          "name": "ListarIntent",
+          "slots": [
+            {
+              "name": "texto",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "listar minhas tarefas",
+            "listar tarefas",
+            "quais são minhas tarefas",
+            "quais tarefas eu tenho",
+            "o que eu tenho para fazer",
+            "listar tarefas {texto}",
+            "quais tarefas {texto}"
+          ]
+        },
+        {
+          "name": "ContarIntent",
+          "slots": [],
+          "samples": [
+            "quantas tarefas eu tenho",
+            "quantas tarefas tenho",
+            "quantas tarefas estão pendentes",
+            "quantas tarefas cadastradas"
+          ]
+        },
+        {
+          "name": "StatusIntent",
+          "slots": [],
+          "samples": [
+            "resumo",
+            "me dê o resumo",
+            "qual o resumo",
+            "como estou hoje",
+            "quanto tempo falta",
+            "qual o status",
+            "qual a situação"
+          ]
+        },
+        {
+          "name": "TempoIntent",
+          "slots": [
+            {
+              "name": "tempo",
+              "type": "AMAZON.DURATION"
+            }
+          ],
+          "samples": [
+            "{tempo}",
+            "gastei {tempo}",
+            "levou {tempo}",
+            "foram {tempo}",
+            "demorei {tempo}",
+            "passei {tempo}"
+          ]
+        }
+      ],
+      "types": []
+    }
+  }
+}

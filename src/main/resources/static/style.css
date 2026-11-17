@@ -19,7 +19,7 @@ input,select{width:100%;padding:9px 10px;border:1px solid #d1d5db;border-radius:
 header .btn{background:rgba(255,255,255,.2);border-color:transparent;color:#fff}
 .acts{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;align-items:center}.acts form{margin:0}
 .grid{display:grid;grid-template-columns:320px 1fr;gap:16px;align-items:start}
-.cols{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;align-items:start}
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px;align-items:start}
 .pill{display:inline-block;padding:2px 10px;border-radius:99px;font-size:11px;font-weight:700;white-space:nowrap}
 .n3{background:#fee2e2;color:#b91c1c}.n2{background:#fef3c7;color:#b45309}.n1{background:#dcfce7;color:#15803d}
 .item{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;padding:12px 0;border-bottom:1px solid #f1f5f9}
@@ -33,10 +33,10 @@ header .btn{background:rgba(255,255,255,.2);border-color:transparent;color:#fff}
 .aviso{margin:0 0 14px}.aviso.ok{background:#f0fdf4;border-color:#86efac;color:#166534}
 .ph{display:flex;justify-content:space-between;align-items:center;gap:8px}.ph h2{margin:0;display:flex;gap:8px;align-items:center}
 .dot{width:10px;height:10px;border-radius:50%}
-.cap{display:flex;gap:6px;align-items:center;font-size:12px;color:var(--mu);margin:0}.cap input{width:76px;padding:5px 8px;margin:0}
+.cap{display:flex;gap:4px;align-items:center;flex-wrap:wrap;font-size:12px;color:var(--mu);margin:8px 0 0}.cap input{width:54px;padding:5px 6px;margin:0}.cap small{margin-right:4px}.cap .btn{margin-left:auto}
 .entrada{max-width:380px;margin:60px auto}
 @media(max-width:860px){.grid,.cols{grid-template-columns:1fr}}
-.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:16px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:16px;margin-bottom:16px}
 .kpi b{display:block;font-size:26px;margin-top:2px}.kpi.err b{color:var(--err)}.kpi.ok b{color:#15803d}
 .live{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--mu)}
 .live i{width:8px;height:8px;border-radius:50%;background:#22c55e}
@@ -44,3 +44,30 @@ header .btn{background:rgba(255,255,255,.2);border-color:transparent;color:#fff}
 @media(max-width:860px){.kpis{grid-template-columns:1fr 1fr}.lin{grid-template-columns:1fr}}
 .cols.resumo{grid-template-columns:1.4fr 1fr}
 @media(max-width:860px){.cols.resumo{grid-template-columns:1fr}}
+
+/* ---- contador, esforço, modo foco ---- */
+fieldset{border:0;margin:0;padding:0;min-width:0}
+.btn:disabled,.btn.off{opacity:.45;cursor:not-allowed;pointer-events:none}
+select:disabled,input:disabled{opacity:.55;cursor:not-allowed}
+.cont{display:inline-flex;align-items:center;gap:4px;font:600 12px/1 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;background:#eef2ff;color:var(--pri2);border-radius:8px;padding:4px 8px}
+.cont::before{content:"\23F1"}
+.cont[data-estado=rodando]{background:#dcfce7;color:#15803d}
+.cont[data-estado=feito]{background:#f1f5f9;color:#475569}
+.cont.estourou{background:#fee2e2;color:#b91c1c}
+.cont.grande{font-size:20px;padding:8px 12px}
+.pill.gasto{background:#e0e7ff;color:var(--pri2)}
+.contagem{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 8px}
+.t.rodando{border-color:#86efac;background:#f0fdf4}
+.acts.mini{margin-top:8px;gap:6px}
+.foco{display:flex;gap:14px;align-items:center;justify-content:space-between;flex-wrap:wrap;background:#fffbeb;border:1px solid #fcd34d;border-radius:14px;padding:12px 16px;margin-bottom:16px}
+.foco.trava{background:#fef2f2;border-color:#fca5a5}
+.foco b{display:block}.foco .mu b{display:inline}
+.dlg{border:0;border-radius:16px;padding:20px;width:min(92vw,380px);box-shadow:0 20px 50px rgba(0,0,0,.3)}
+.dlg::backdrop{background:rgba(17,24,39,.55)}
+.dlg h2{margin-bottom:4px}
+.hms{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+@media(max-width:860px){.cap .btn{margin-left:0}}
+
+.cap>span{flex-basis:100%}
+.cap input{width:48px}
+.cap .btn{flex-basis:100%;margin:6px 0 0;text-align:center}

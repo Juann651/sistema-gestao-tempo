@@ -8,6 +8,7 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -18,12 +19,26 @@ import org.springframework.web.bind.annotation.*;
 @Controller
 public class SgtController {
     private final SupabaseService sb;
+    private final TarefaService svc;
 
-    public SgtController(SupabaseService sb) { this.sb = sb; }
+    public SgtController(SupabaseService sb, TarefaService svc) { this.sb = sb; this.svc = svc; }
 
+    /** Uma coluna da agenda. Tempos em SEGUNDOS. */
     public record Coluna(Periodo periodo, List<Tarefa> tarefas, int usado, int capacidade) {
-        public int percentual() { return capacidade == 0 ? 100 : Math.min(100, usado * 100 / capacidade); }
+        public int percentual() { return capacidade == 0 ? 100 : (int) Math.min(100, usado * 100L / capacidade); }
         public int excesso() { return Math.max(0, usado - capacidade); }
+        public String usadoFmt() { return Tempo.legivel(usado); }
+        public String capacidadeFmt() { return Tempo.legivel(capacidade); }
+        public String excessoFmt() { return Tempo.legivel(excesso()); }
+        public int capH() { return Tempo.horas(capacidade); }
+        public int capM() { return Tempo.minutos(capacidade); }
+        public int capS() { return Tempo.segundos(capacidade); }
+    }
+
+    /** Esforço das tarefas concluídas por usuário. */
+    public record Esforco(String usuario, long tarefas, long previstoSeg, long gastoSeg) {
+        public String previstoFmt() { return Tempo.legivel(previstoSeg); }
+        public String gastoFmt() { return Tempo.legivel(gastoSeg); }
     }
 
     @ModelAttribute
@@ -63,16 +78,38 @@ public class SgtController {
     @GetMapping("/sair")
     String sair(HttpSession s) { s.invalidate(); return "redirect:/login"; }
 
+    // ---------- contexto comum às telas ----------
+    /** Disponibiliza o estado do modo foco (tarefa em andamento, bloqueio, relógio do servidor) para as páginas. */
+    private boolean contexto(Model m, List<Tarefa> ts, String pagina) {
+        long agora = System.currentTimeMillis();
+        Tarefa ativa = TarefaService.emAndamento(ts);
+        boolean bloqueado = TarefaService.travadora(ts, agora) != null;
+        m.addAttribute("ativa", ativa);
+        m.addAttribute("bloqueado", bloqueado);
+        m.addAttribute("agora", agora);
+        m.addAttribute("pagina", pagina);
+        return bloqueado;
+    }
+
+    private static String volta(String v) {
+        return "/agenda".equals(v) ? "redirect:/agenda" : "/resumo".equals(v) ? "redirect:/resumo" : "redirect:/";
+    }
+
     // ---------- tarefas ----------
     @GetMapping("/")
     String tarefas(@RequestParam(required = false) String editar, HttpSession s, Model m) {
-        List<Tarefa> ts = new ArrayList<>(sb.chamar(s, sb::tarefas));
+        List<Tarefa> ts = new ArrayList<>(svc.listar(sb.web(s)));
+        boolean bloqueado = contexto(m, ts, "tarefas");
         ts.sort(Comparator.comparing(Tarefa::concluida).thenComparing(Comparator.comparingInt(Tarefa::score).reversed()));
+        long feitas = ts.stream().filter(Tarefa::concluida).count();
         m.addAttribute("tarefas", ts);
+        m.addAttribute("total", ts.size());
+        m.addAttribute("feitas", feitas);
+        m.addAttribute("pendentes", ts.size() - feitas);
+        m.addAttribute("esforco", Tempo.legivel(ts.stream().filter(Tarefa::concluida).mapToLong(Tarefa::tempoGasto).sum()));
         m.addAttribute("niveis", Nivel.values());
         m.addAttribute("periodos", Periodo.values());
-        m.addAttribute("edit", editar == null ? null : ts.stream().filter(t -> t.id().equals(editar)).findFirst().orElse(null));
-        m.addAttribute("pagina", "tarefas");
+        m.addAttribute("edit", editar == null || bloqueado ? null : ts.stream().filter(t -> t.id().equals(editar)).findFirst().orElse(null));
         return "tarefas";
     }
 
@@ -81,31 +118,43 @@ public class SgtController {
                   @RequestParam(defaultValue = "") String descricao, @RequestParam int prioridade,
                   @RequestParam int urgencia, @RequestParam int complexidade, @RequestParam int duracao,
                   @RequestParam String periodo, HttpSession s) {
-        if (nome.isBlank()) throw new ErroSupabase(400, "Informe o nome da tarefa.");
-        if (duracao < 1) throw new ErroSupabase(400, "A duração deve ser maior que zero.");
-        Map<String, Object> d = Map.of("nome", nome.trim(), "descricao", descricao.trim(),
-                "prioridade", Nivel.de(prioridade).getPeso(), "urgencia", Nivel.de(urgencia).getPeso(),
-                "complexidade", Nivel.de(complexidade).getPeso(), "duracao", duracao,
-                "periodo", Periodo.de(periodo).getCodigo());
-        sb.chamar(s, x -> { sb.salvarTarefa(x, id, d); return null; });
+        Map<String, Object> d = TarefaService.dados(nome, descricao, Nivel.de(prioridade), Nivel.de(urgencia),
+                Nivel.de(complexidade), duracao, Periodo.de(periodo));
+        if (id == null || id.isBlank()) svc.criar(sb.web(s), d); else svc.editar(sb.web(s), id, d);
         return "redirect:/";
     }
 
+    /** Pop-up "tempo gasto": conclui a tarefa gravando o esforço informado em horas, minutos e segundos. */
     @PostMapping("/tarefas/{id}/concluir")
-    String concluir(@PathVariable String id, @RequestParam boolean concluida, HttpSession s) {
-        sb.chamar(s, x -> { sb.salvarTarefa(x, id, Map.of("concluida", concluida)); return null; });
-        return "redirect:/";
+    String concluir(@PathVariable String id, @RequestParam(defaultValue = "0") int horas,
+                    @RequestParam(defaultValue = "0") int minutos, @RequestParam(defaultValue = "0") int segundos,
+                    @RequestParam(required = false) String volta, HttpSession s) {
+        if (horas < 0 || minutos < 0 || segundos < 0) throw new ErroSupabase(400, "O tempo gasto não pode ser negativo.");
+        svc.concluir(sb.web(s), id, (int) Math.min(Integer.MAX_VALUE, horas * 3600L + minutos * 60L + segundos));
+        return volta(volta);
+    }
+
+    @PostMapping("/tarefas/{id}/iniciar")
+    String iniciar(@PathVariable String id, @RequestParam(required = false) String volta, HttpSession s) {
+        svc.iniciar(sb.web(s), id);
+        return volta(volta);
+    }
+
+    @PostMapping("/tarefas/{id}/reabrir")
+    String reabrir(@PathVariable String id, @RequestParam(required = false) String volta, HttpSession s) {
+        svc.reabrir(sb.web(s), id);
+        return volta(volta);
     }
 
     @PostMapping("/tarefas/{id}/remover")
     String remover(@PathVariable String id, HttpSession s) {
-        sb.chamar(s, x -> { sb.remover(x, id); return null; });
+        svc.remover(sb.web(s), id);
         return "redirect:/";
     }
 
     @PostMapping("/tarefas/{id}/turno")
     String turno(@PathVariable String id, @RequestParam String periodo, HttpSession s) {
-        sb.chamar(s, x -> { sb.salvarTarefa(x, id, Map.of("periodo", Periodo.de(periodo).getCodigo())); return null; });
+        svc.mover(sb.web(s), id, Periodo.de(periodo));
         return "redirect:/agenda";
     }
 
@@ -115,45 +164,61 @@ public class SgtController {
         for (Periodo p : Periodo.values()) {
             List<Tarefa> l = ts.stream().filter(t -> !t.concluida() && t.turno() == p)
                     .sorted(Comparator.comparingInt(Tarefa::score).reversed()).toList();
-            colunas.add(new Coluna(p, l, l.stream().mapToInt(Tarefa::duracao).sum(), caps.get(p)));
+            colunas.add(new Coluna(p, l, l.stream().mapToInt(Tarefa::duracaoSeg).sum(), caps.get(p)));
         }
         return colunas;
     }
 
     @GetMapping("/agenda")
     String agenda(HttpSession s, Model m) {
-        List<Tarefa> ts = sb.chamar(s, sb::tarefas);
-        m.addAttribute("colunas", montarColunas(ts, sb.chamar(s, sb::capacidades)));
+        List<Tarefa> ts = svc.listar(sb.web(s));
+        contexto(m, ts, "agenda");
+        m.addAttribute("colunas", montarColunas(ts, svc.capacidades(sb.web(s))));
         m.addAttribute("periodos", Periodo.values());
-        m.addAttribute("pagina", "agenda");
         return "agenda";
     }
 
     // ---------- resumo do dia ----------
     @GetMapping("/resumo")
     String resumo(HttpSession s, Model m) {
-        List<Tarefa> ts = sb.chamar(s, sb::tarefas);
-        List<Coluna> colunas = montarColunas(ts, sb.chamar(s, sb::capacidades));
+        List<Tarefa> ts = svc.listar(sb.web(s));
+        contexto(m, ts, "resumo");
+        List<Coluna> colunas = montarColunas(ts, svc.capacidades(sb.web(s)));
         long pendentes = ts.stream().filter(t -> !t.concluida()).count();
         String data = LocalDate.now(ZoneId.of("America/Sao_Paulo"))
                 .format(DateTimeFormatter.ofPattern("EEEE, d 'de' MMMM", Locale.forLanguageTag("pt-BR")));
         m.addAttribute("data", Character.toUpperCase(data.charAt(0)) + data.substring(1));
         m.addAttribute("pendentes", pendentes);
         m.addAttribute("concluidas", ts.size() - pendentes);
-        m.addAttribute("usado", colunas.stream().mapToInt(Coluna::usado).sum());
-        m.addAttribute("capacidade", colunas.stream().mapToInt(Coluna::capacidade).sum());
-        m.addAttribute("excesso", colunas.stream().mapToInt(Coluna::excesso).sum());
+        m.addAttribute("usado", Tempo.legivel(colunas.stream().mapToInt(Coluna::usado).sum()));
+        m.addAttribute("capacidade", Tempo.legivel(colunas.stream().mapToInt(Coluna::capacidade).sum()));
+        int excesso = colunas.stream().mapToInt(Coluna::excesso).sum();
+        m.addAttribute("excesso", excesso);
+        m.addAttribute("excessoFmt", Tempo.legivel(excesso));
         m.addAttribute("proximas", ts.stream().filter(t -> !t.concluida())
                 .sorted(Comparator.comparingInt(Tarefa::score).reversed()).limit(3).toList());
         m.addAttribute("colunas", colunas);
-        m.addAttribute("pagina", "resumo");
+        // esforço gasto: total e por usuário (quem concluiu)
+        List<Tarefa> feitas = ts.stream().filter(Tarefa::concluida).toList();
+        m.addAttribute("esforcoTotal", Tempo.legivel(feitas.stream().mapToLong(Tarefa::tempoGasto).sum()));
+        Map<String, long[]> porUsuario = new LinkedHashMap<>();
+        for (Tarefa t : feitas) {
+            long[] a = porUsuario.computeIfAbsent(t.quemFez().isBlank() ? "(sem usuário)" : t.quemFez(), k -> new long[3]);
+            a[0]++; a[1] += t.duracaoSeg(); a[2] += t.tempoGasto();
+        }
+        m.addAttribute("esforcos", porUsuario.entrySet().stream()
+                .map(e -> new Esforco(e.getKey(), e.getValue()[0], e.getValue()[1], e.getValue()[2]))
+                .sorted(Comparator.comparingLong(Esforco::gastoSeg).reversed()).toList());
         return "resumo";
     }
 
     @PostMapping("/capacidade")
-    String capacidade(@RequestParam String periodo, @RequestParam int minutos, HttpSession s) {
-        if (minutos < 0) throw new ErroSupabase(400, "A capacidade não pode ser negativa.");
-        sb.chamar(s, x -> { sb.salvarCapacidade(x, Periodo.de(periodo), minutos); return null; });
+    String capacidade(@RequestParam String periodo, @RequestParam(defaultValue = "0") int horas,
+                      @RequestParam(defaultValue = "0") int minutos, @RequestParam(defaultValue = "0") int segundos, HttpSession s) {
+        if (horas < 0 || minutos < 0 || segundos < 0) throw new ErroSupabase(400, "A capacidade não pode ser negativa.");
+        long total = horas * 3600L + minutos * 60L + segundos;
+        if (total > TarefaService.LIMITE_CAPACIDADE_SEG) throw new ErroSupabase(400, "A capacidade de um turno não pode passar de 24 horas.");
+        svc.capacidade(sb.web(s), Periodo.de(periodo), (int) total);
         return "redirect:/agenda";
     }
 }

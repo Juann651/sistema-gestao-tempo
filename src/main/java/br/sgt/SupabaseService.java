@@ -5,6 +5,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpSession;
 import java.io.InputStream;
+import java.time.Instant;
+import java.util.Base64;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
@@ -42,7 +44,8 @@ public class SupabaseService {
         return n != null && n.hasNonNull("access_token") ? sessao(n) : null;
     }
 
-    private Sessao renovar(String refresh) {
+    /** Troca um refresh token por uma sessão nova (o Supabase gira o refresh token a cada uso). */
+    public Sessao renovar(String refresh) {
         return sessao(enviar(req(HttpMethod.POST, "/auth/v1/token?grant_type=refresh_token", null), Map.of("refresh_token", refresh)));
     }
 
@@ -66,17 +69,60 @@ public class SupabaseService {
         }
     }
 
+
+    // ---------- acesso em nome de um usuário ----------
+    /** Acesso pelo navegador: usa (e renova, se preciso) a sessão guardada no HttpSession. */
+    public Acesso web(HttpSession http) {
+        return new Acesso() {
+            @Override public <T> T chamar(Function<Sessao, T> f) { return SupabaseService.this.chamar(http, f); }
+        };
+    }
+
+    /** Acesso pela Alexa: o token da conta vinculada é o próprio JWT do Supabase (a Alexa cuida de renová-lo). */
+    public Acesso porToken(String jwt) {
+        Sessao s = sessaoDoJwt(jwt);
+        return new Acesso() {
+            @Override public <T> T chamar(Function<Sessao, T> f) { return f.apply(s); }
+        };
+    }
+
+    private static JsonNode corpoDoJwt(String jwt) {
+        try {
+            return JSON.readTree(Base64.getUrlDecoder().decode(jwt.split("\\.")[1]));
+        } catch (Exception e) {
+            throw new ErroSupabase(401, "Conta não vinculada.");
+        }
+    }
+
+    private static Sessao sessaoDoJwt(String jwt) {
+        if (jwt == null || jwt.isBlank()) throw new ErroSupabase(401, "Conta não vinculada.");
+        JsonNode c = corpoDoJwt(jwt);
+        if (!c.hasNonNull("sub") || (c.hasNonNull("exp") && c.get("exp").asLong() <= Instant.now().getEpochSecond()))
+            throw new ErroSupabase(401, "A vinculação com a conta expirou.");
+        return new Sessao(jwt, null, c.get("sub").asText(), c.path("email").asText(""));
+    }
+
+    /** Segundos que faltam para o JWT expirar (para o campo expires_in do OAuth). */
+    public static long segundosAteExpirar(String jwt) {
+        JsonNode c = corpoDoJwt(jwt);
+        return c.hasNonNull("exp") ? Math.max(1, c.get("exp").asLong() - Instant.now().getEpochSecond()) : 3600;
+    }
+
     // ---------- dados ----------
     public List<Tarefa> tarefas(Sessao s) {
         JsonNode n = enviar(req(HttpMethod.GET, "/rest/v1/tarefas?select=*&order=criada_em", s.access()), null);
         return n == null ? List.of() : JSON.convertValue(n, new TypeReference<List<Tarefa>>() { });
     }
 
+    /** Capacidade de cada turno, em SEGUNDOS. Usa a coluna "segundos"; se ela estiver vazia, converte os "minutos" antigos. */
     public Map<Periodo, Integer> capacidades(Sessao s) {
         Map<Periodo, Integer> m = new EnumMap<>(Periodo.class);
-        for (Periodo p : Periodo.values()) m.put(p, p.getCapacidadePadrao());
-        JsonNode n = enviar(req(HttpMethod.GET, "/rest/v1/capacidades?select=periodo,minutos", s.access()), null);
-        if (n != null) n.forEach(x -> m.put(Periodo.de(x.get("periodo").asText()), x.get("minutos").asInt()));
+        for (Periodo p : Periodo.values()) m.put(p, p.getCapacidadePadraoSeg());
+        JsonNode n = enviar(req(HttpMethod.GET, "/rest/v1/capacidades?select=periodo,minutos,segundos", s.access()), null);
+        if (n != null) n.forEach(x -> {
+            int seg = x.hasNonNull("segundos") ? x.get("segundos").asInt() : x.path("minutos").asInt() * 60;
+            m.put(Periodo.de(x.get("periodo").asText()), seg);
+        });
         return m;
     }
 
@@ -90,10 +136,11 @@ public class SupabaseService {
         enviar(req(HttpMethod.DELETE, "/rest/v1/tarefas?id=eq." + uuid(id), s.access()), null);
     }
 
-    public void salvarCapacidade(Sessao s, Periodo p, int minutos) {
+    /** Grava em segundos; "minutos" continua preenchido para manter compatibilidade com a coluna antiga. */
+    public void salvarCapacidade(Sessao s, Periodo p, int segundos) {
         enviar(req(HttpMethod.POST, "/rest/v1/capacidades?on_conflict=user_id,periodo", s.access())
                 .header("Prefer", "resolution=merge-duplicates"),
-                Map.of("user_id", s.userId(), "periodo", p.getCodigo(), "minutos", minutos));
+                Map.of("user_id", s.userId(), "periodo", p.getCodigo(), "minutos", segundos / 60, "segundos", segundos));
     }
 
     // ---------- infraestrutura ----------

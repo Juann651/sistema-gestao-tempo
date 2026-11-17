@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>SGT · Vincular à Alexa</title><link rel="stylesheet" th:href="@{/style.css}"></head>
+<body>
+<main class="entrada"><form class="card" method="post" th:action="@{/oauth/authorize}">
+  <h2>Vincular o SGT à Alexa</h2>
+  <p class="mu">Entre com a mesma conta do SGT. Depois disso você poderá pedir à Alexa para criar, iniciar e concluir tarefas por voz.</p>
+  <div class="aviso" th:if="${erro != null}" th:text="${erro}"></div>
+  <input type="hidden" name="client_id" th:value="${clientId}">
+  <input type="hidden" name="response_type" th:value="${tipo}">
+  <input type="hidden" name="redirect_uri" th:value="${redirect}">
+  <input type="hidden" name="state" th:value="${state}">
+  <label>E-mail<input type="email" name="email" required autocomplete="email"></label>
+  <label>Senha<input type="password" name="senha" required autocomplete="current-password"></label>
+  <div class="acts"><button class="btn p">Entrar e vincular</button></div>
+</form></main>
+</body></html>

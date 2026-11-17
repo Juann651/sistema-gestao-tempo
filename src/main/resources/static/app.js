@@ -1,0 +1,64 @@
+(function () {
+  'use strict';
+
+  // ---------- relógio sincronizado com o servidor ----------
+  var offset = (Number(document.body.getAttribute('data-agora')) || Date.now()) - Date.now();
+  function agora() { return Date.now() + offset; }
+  function relogio(seg) {
+    var neg = seg < 0, n = Math.abs(Math.round(seg));
+    var h = Math.floor(n / 3600), m = Math.floor(n % 3600 / 60), s = n % 60;
+    function p(x) { return (x < 10 ? '0' : '') + x; }
+    return (neg ? '-' : '') + p(h) + ':' + p(m) + ':' + p(s);
+  }
+
+  // ---------- contadores de tarefa ----------
+  // parado = tempo previsto · rodando = quanto falta (fica vermelho e negativo ao estourar) · feito = esforço gasto
+  var foco = document.querySelector('.foco[data-fim]');
+  var focoFim = foco ? Number(foco.getAttribute('data-fim')) : 0;
+  var recarregou = false;
+  function tick() {
+    var cs = document.querySelectorAll('.cont');
+    for (var i = 0; i < cs.length; i++) {
+      var el = cs[i], estado = el.getAttribute('data-estado');
+      if (estado === 'rodando') {
+        var resta = (Number(el.getAttribute('data-fim')) - agora()) / 1000;
+        el.textContent = relogio(Math.ceil(resta));
+        el.classList.toggle('estourou', resta < 0);
+        el.title = resta < 0 ? 'Passou do tempo reservado' : 'Tempo restante';
+      } else {
+        el.textContent = relogio(Number(el.getAttribute('data-seg')) || 0);
+        el.title = estado === 'feito' ? 'Esforço gasto' : 'Tempo previsto';
+      }
+    }
+    // quando a reserva de tempo acaba, o servidor libera as ações: recarrega uma vez
+    if (focoFim > 0 && !recarregou && agora() >= focoFim) { recarregou = true; setTimeout(function () { location.reload(); }, 600); }
+  }
+  tick();
+  setInterval(tick, 1000);
+
+  // ---------- pop-up de tempo gasto ----------
+  var dlg = document.getElementById('dlgGasto');
+  var frm = document.getElementById('frmGasto');
+  if (dlg && frm) {
+    document.addEventListener('click', function (e) {
+      var b = e.target.closest ? e.target.closest('[data-concluir]') : null;
+      if (b && !b.disabled) {
+        var seg = Math.max(0, Math.round(Number(b.getAttribute('data-seg')) || 0));
+        frm.action = '/tarefas/' + encodeURIComponent(b.getAttribute('data-id')) + '/concluir';
+        frm.elements.volta.value = location.pathname;
+        frm.elements.horas.value = Math.floor(seg / 3600);
+        frm.elements.minutos.value = Math.floor(seg % 3600 / 60);
+        frm.elements.segundos.value = seg % 60;
+        document.getElementById('gastoNome').textContent = b.getAttribute('data-nome');
+        document.getElementById('gastoErro').hidden = true;
+        if (dlg.showModal) dlg.showModal(); else dlg.setAttribute('open', '');
+        frm.elements.minutos.focus();
+      }
+      if (e.target.closest && e.target.closest('[data-fechar]')) dlg.close();
+    });
+    frm.addEventListener('submit', function (e) {
+      var t = (+frm.elements.horas.value || 0) * 3600 + (+frm.elements.minutos.value || 0) * 60 + (+frm.elements.segundos.value || 0);
+      if (t < 1) { e.preventDefault(); document.getElementById('gastoErro').hidden = false; }
+    });
+  }
+})();

@@ -7,5 +7,35 @@
   <a class="btn s" th:href="@{/sair}">Sair</a>
 </header>
 <div th:fragment="aviso" class="aviso" th:if="${aviso != null}" th:text="${aviso}"></div>
+
+<!-- Faixa do modo foco: aparece em todas as telas enquanto houver tarefa em andamento -->
+<div th:fragment="faixaFoco" th:if="${ativa != null}" class="foco" th:classappend="${bloqueado} ? 'trava'" th:attr="data-fim=${bloqueado ? ativa.fimMs() : 0}">
+  <div>
+    <b th:text="${bloqueado} ? '🔒 Modo foco: as outras ações estão bloqueadas' : '⏱ O tempo reservado acabou'"></b>
+    <div class="mu">Em andamento: <b th:text="${ativa.nome()}"></b> · <span th:text="${bloqueado} ? 'Só é possível concluir esta tarefa até o fim do tempo reservado.' : 'Conclua quando terminar.'"></span></div>
+  </div>
+  <span class="cont grande" data-estado="rodando" th:attr="data-fim=${ativa.fimMs()},data-seg=${ativa.duracaoSeg()}">00:00:00</span>
+  <button type="button" class="btn p" data-concluir th:attr="data-id=${ativa.id()},data-nome=${ativa.nome()},data-seg=${ativa.sugestaoGastoSeg(agora)}">Concluir</button>
+</div>
+
+<!-- Pop-up de tempo gasto + script (incluir uma vez no fim do body) -->
+<div th:fragment="rodape">
+  <dialog id="dlgGasto" class="dlg" aria-labelledby="gastoTitulo">
+    <form method="post" id="frmGasto">
+      <input type="hidden" name="volta" value="/">
+      <h2 id="gastoTitulo">Tempo gasto</h2>
+      <p class="mu">Quanto tempo você gastou em <b id="gastoNome"></b>? Ao salvar, a tarefa é concluída.</p>
+      <div class="hms">
+        <label>Horas<input type="number" name="horas" min="0" max="999" value="0" inputmode="numeric"></label>
+        <label>Minutos<input type="number" name="minutos" min="0" max="59" value="0" inputmode="numeric"></label>
+        <label>Segundos<input type="number" name="segundos" min="0" max="59" value="0" inputmode="numeric"></label>
+      </div>
+      <div class="warn" id="gastoErro" hidden>Informe um tempo maior que zero.</div>
+      <div class="acts"><button class="btn p">Salvar e concluir</button><button type="button" class="btn" data-fechar>Cancelar</button></div>
+    </form>
+  </dialog>
+
+  <script th:src="@{/app.js}"></script>
+</div>
 </body>
 </html>

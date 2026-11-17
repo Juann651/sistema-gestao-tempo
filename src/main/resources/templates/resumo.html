@@ -1,37 +1,50 @@
 <!DOCTYPE html>
 <html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>SGT</title><link rel="stylesheet" th:href="@{/style.css}"></head>
-<body>
+<body th:attr="data-agora=${agora}">
 <header th:replace="~{fragmentos :: topo(${pagina})}"></header>
 <main>
 <div th:replace="~{fragmentos :: aviso}"></div>
+<div th:replace="~{fragmentos :: faixaFoco}"></div>
 <div class="kpis">
   <div class="card kpi"><span class="mu">PENDENTES</span><b th:text="${pendentes}"></b></div>
   <div class="card kpi ok"><span class="mu">CONCLUÍDAS</span><b th:text="${concluidas}"></b></div>
-  <div class="card kpi"><span class="mu">TEMPO PLANEJADO</span><b th:text="${usado + ' min'}"></b><span class="mu" th:text="${'de ' + capacidade + ' min disponíveis'}"></span></div>
-  <div class="card kpi" th:classappend="${excesso > 0} ? 'err' : 'ok'"><span class="mu">ACIMA DA CAPACIDADE</span><b th:text="${excesso + ' min'}"></b></div>
+  <div class="card kpi"><span class="mu">TEMPO PLANEJADO</span><b th:text="${usado}"></b><span class="mu" th:text="${'de ' + capacidade + ' disponíveis'}"></span></div>
+  <div class="card kpi"><span class="mu">ESFORÇO GASTO</span><b th:text="${esforcoTotal}"></b><span class="mu">em tarefas concluídas</span></div>
+  <div class="card kpi" th:classappend="${excesso > 0} ? 'err' : 'ok'"><span class="mu">ACIMA DA CAPACIDADE</span><b th:text="${excessoFmt}"></b></div>
 </div>
 <div class="cols resumo">
   <div class="card">
     <div class="ph"><h2>Resumo do dia</h2></div>
     <p class="mu" th:text="${data}"></p>
-    <div class="warn" th:if="${excesso > 0}" th:text="${'Atenção: ' + excesso + ' min acima da capacidade. Mova tarefas para outro turno na Agenda.'}"></div>
+    <div class="warn" th:if="${excesso > 0}" th:text="${'Atenção: ' + excessoFmt + ' acima da capacidade. Mova tarefas para outro turno na Agenda.'}"></div>
     <p class="mu" th:if="${excesso == 0 and pendentes > 0}">Seu dia cabe nos turnos escolhidos.</p>
     <p class="mu" th:if="${pendentes == 0}">Nenhuma tarefa pendente. Aproveite o dia!</p>
     <div class="lin" th:each="c : ${colunas}">
       <b><span class="dot" style="display:inline-block;margin-right:6px" th:style="${'display:inline-block;margin-right:6px;background:' + c.periodo().cor}"></span><span th:text="${c.periodo().rotulo}"></span></b>
       <div class="bar" style="margin:0"><i th:style="${'width:' + c.percentual() + '%;background:' + (c.excesso() > 0 ? '#dc2626' : c.periodo().cor)}"></i></div>
-      <span class="mu" th:text="${c.usado() + ' de ' + c.capacidade() + ' min · ' + c.tarefas().size() + ' tarefa(s)'}"></span>
+      <span class="mu" th:text="${c.usadoFmt() + ' de ' + c.capacidadeFmt() + ' · ' + c.tarefas().size() + ' tarefa(s)'}"></span>
     </div>
   </div>
-  <div class="card">
-    <h2>Próximas tarefas</h2>
-    <p class="mu" th:if="${#lists.isEmpty(proximas)}">Nada pendente.</p>
-    <div class="item" th:each="t : ${proximas}">
-      <div><b th:text="${t.nome()}"></b><div class="tags"><span class="pill" th:style="${'background:' + t.turno().cor + '22;color:' + t.turno().cor}" th:text="${t.turno().rotulo}"></span><span class="mu" th:text="${t.duracao() + ' min'}"></span></div></div>
-      <span class="pill" th:classappend="${t.scoreCss()}" th:text="${'score ' + t.score()}"></span>
+  <div>
+    <div class="card">
+      <h2>Próximas tarefas</h2>
+      <p class="mu" th:if="${#lists.isEmpty(proximas)}">Nada pendente.</p>
+      <div class="item" th:each="t : ${proximas}">
+        <div><b th:text="${t.nome()}"></b><div class="tags"><span class="pill" th:style="${'background:' + t.turno().cor + '22;color:' + t.turno().cor}" th:text="${t.turno().rotulo}"></span><span class="mu" th:text="${t.duracaoFmt()}"></span><span class="cont" th:attr="data-estado=${t.estado()},data-fim=${t.fimMs()},data-seg=${t.contadorSeg()}">00:00:00</span></div></div>
+        <span class="pill" th:classappend="${t.scoreCss()}" th:text="${'score ' + t.score()}"></span>
+      </div>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <h2>Esforço por usuário</h2>
+      <p class="mu" th:if="${#lists.isEmpty(esforcos)}">Ninguém concluiu tarefas ainda.</p>
+      <div class="item" th:each="e : ${esforcos}">
+        <div><b th:text="${e.usuario()}"></b><span class="mu" th:text="${e.tarefas() + (e.tarefas() == 1 ? ' tarefa concluída' : ' tarefas concluídas') + ' · previsto ' + e.previstoFmt()}"></span></div>
+        <span class="pill gasto" th:text="${e.gastoFmt()}"></span>
+      </div>
     </div>
   </div>
 </div>
 </main>
+<div th:replace="~{fragmentos :: rodape}"></div>
 </body></html>
