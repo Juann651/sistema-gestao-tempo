@@ -1,83 +1,117 @@
 <!DOCTYPE html>
 <html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>SGT</title><link rel="stylesheet" th:href="@{/style.css}"></head>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>SGT · Tarefas</title><link rel="stylesheet" th:href="@{/style.css}"></head>
 <body th:attr="data-agora=${agora}">
 <header th:replace="~{fragmentos :: topo(${pagina})}"></header>
 <main>
+<div class="pagina-titulo"><h1>Tarefas de hoje</h1><p th:text="${dataHoje}"></p></div>
 <div th:replace="~{fragmentos :: aviso}"></div>
 <div th:replace="~{fragmentos :: faixaFoco}"></div>
+
 <div class="grid">
-  <form class="card" method="post" th:action="@{/tarefas}">
-    <h2 th:text="${edit != null} ? 'Editando tarefa' : 'Nova tarefa'">Nova tarefa</h2>
+  <!-- ===== formulário em cartões de escolha ===== -->
+  <form class="card" id="nova" method="post" th:action="@{/tarefas}">
+    <h2 th:text="${edit != null} ? '✏️ Editando tarefa' : '➕ Nova tarefa'">Nova tarefa</h2>
     <p class="mu" th:if="${bloqueado}">🔒 Bloqueado enquanto o modo foco estiver ativo.</p>
     <fieldset th:disabled="${bloqueado}">
-    <input type="hidden" name="id" th:value="${edit?.id()}">
-    <label>Nome<input name="nome" required th:value="${edit?.nome()}"></label>
-    <label>Descrição<input name="descricao" th:value="${edit?.descricao()}"></label>
-    <div class="row2">
-      <label>Prioridade<select name="prioridade"><option th:each="n : ${niveis}" th:value="${n.peso}" th:text="${n.rotulo}" th:selected="${edit != null ? edit.prioridade() == n.peso : n.name() == 'MEDIA'}"></option></select></label>
-      <label>Urgência<select name="urgencia"><option th:each="n : ${niveis}" th:value="${n.peso}" th:text="${n.rotulo}" th:selected="${edit != null ? edit.urgencia() == n.peso : n.name() == 'MEDIA'}"></option></select></label>
-      <label>Complexidade<select name="complexidade"><option th:each="n : ${niveis}" th:value="${n.peso}" th:text="${n.rotulo}" th:selected="${edit != null ? edit.complexidade() == n.peso : n.name() == 'MEDIA'}"></option></select></label>
-      <label>Duração prevista (min)<input type="number" name="duracao" min="1" required th:value="${edit != null} ? ${edit.duracao()} : 60"></label>
-    </div>
-    <label th:if="${edit == null}">Dia da tarefa<input type="date" name="dia" th:value="${hojeIso}" th:min="${hojeIso}"></label>
-    <label>Turno<select name="periodo"><option th:each="p : ${periodos}" th:value="${p.codigo}" th:text="${p.rotulo}" th:selected="${edit != null ? edit.periodo() == p.codigo : p.name() == 'MANHA'}"></option></select></label>
-    <div class="acts"><button class="btn p">Salvar tarefa</button><a class="btn" th:href="@{/}">Cancelar</a></div>
+      <input type="hidden" name="id" th:value="${edit?.id()}">
+      <label>Nome<input name="nome" required placeholder="O que precisa ser feito?" th:value="${edit?.nome()}"></label>
+      <label>Descrição (opcional)<input name="descricao" th:value="${edit?.descricao()}"></label>
+
+      <div class="campo-t">Prioridade <span class="mu" style="text-transform:none;letter-spacing:0">· o quanto importa</span></div>
+      <div class="opcoes">
+        <label class="op" th:each="n, i : ${niveis}"><input type="radio" name="prioridade" th:value="${n.peso}" th:checked="${edit != null ? edit.prioridade() == n.peso : n.name() == 'MEDIA'}"><span class="cardop"><span class="meter" th:attr="data-n=${n.peso}"><i></i><i></i><i></i></span><b th:text="${n.rotulo}"></b><small th:text="${descPrioridade[i.index]}"></small></span></label>
+      </div>
+
+      <div class="campo-t">Urgência <span class="mu" style="text-transform:none;letter-spacing:0">· o quanto tem pressa</span></div>
+      <div class="opcoes">
+        <label class="op" th:each="n, i : ${niveis}"><input type="radio" name="urgencia" th:value="${n.peso}" th:checked="${edit != null ? edit.urgencia() == n.peso : n.name() == 'MEDIA'}"><span class="cardop"><span class="meter" th:attr="data-n=${n.peso}"><i></i><i></i><i></i></span><b th:text="${n.rotulo}"></b><small th:text="${descUrgencia[i.index]}"></small></span></label>
+      </div>
+
+      <div class="campo-t">Complexidade <span class="mu" style="text-transform:none;letter-spacing:0">· o quanto exige de foco</span></div>
+      <div class="opcoes">
+        <label class="op" th:each="n, i : ${niveis}"><input type="radio" name="complexidade" th:value="${n.peso}" th:checked="${edit != null ? edit.complexidade() == n.peso : n.name() == 'MEDIA'}"><span class="cardop"><span class="meter" th:attr="data-n=${n.peso}"><i></i><i></i><i></i></span><b th:text="${n.rotulo}"></b><small th:text="${descComplexidade[i.index]}"></small></span></label>
+      </div>
+
+      <div class="campo-t">Turno</div>
+      <div class="opcoes dois">
+        <label class="op" th:each="p : ${periodos}"><input type="radio" name="periodo" th:value="${p.codigo}" th:checked="${edit != null ? edit.periodo() == p.codigo : p.name() == 'MANHA'}"><span class="cardop"><span class="ico" th:text="${p.icone}"></span><b th:text="${p.rotulo}"></b></span></label>
+      </div>
+
+      <div class="row2">
+        <label>Duração prevista (min)<input type="number" name="duracao" min="1" required th:value="${edit != null} ? ${edit.duracao()} : 60"></label>
+        <label th:if="${edit == null}">Dia da tarefa<input type="date" name="dia" th:value="${hojeIso}" th:min="${hojeIso}"></label>
+      </div>
+      <div class="acts"><button class="btn p">Salvar tarefa</button><a class="btn" th:if="${edit != null}" th:href="@{/}">Cancelar</a></div>
     </fieldset>
   </form>
+
+  <!-- ===== lista de tarefas: cartões que abrem ao clicar ===== -->
   <div>
-  <div class="card">
-    <h2>Tarefas de hoje <span class="mu" th:text="${dataHoje}"></span></h2>
-    <div class="contagem">
-      <span class="pill n1" th:text="${total + (total == 1 ? ' cadastrada' : ' cadastradas')}"></span>
-      <span class="pill n2" th:text="${pendentes + (pendentes == 1 ? ' pendente' : ' pendentes')}"></span>
-      <span class="pill n1" th:text="${feitas + (feitas == 1 ? ' concluída' : ' concluídas')}"></span>
-      <span class="pill gasto" th:text="${'esforço total ' + esforco}"></span>
+    <div class="stats">
+      <div class="stat"><span>Hoje</span><b th:text="${total}"></b></div>
+      <div class="stat"><span>Pendentes</span><b th:text="${pendentes}"></b></div>
+      <div class="stat"><span>Concluídas</span><b th:text="${feitas}"></b></div>
+      <div class="stat"><span>Esforço</span><b th:text="${esforco}" style="font-size:16px"></b></div>
     </div>
-    <div class="mu">Ordenadas por score (prioridade × 2 + urgência × 3).</div>
-    <p class="mu" th:if="${#lists.isEmpty(tarefas)}">Nenhuma tarefa para hoje. Cadastre uma ao lado (sem tarefas, o dia é neutro na sua sequência).</p>
-    <div class="item" th:each="t : ${tarefas}" th:classappend="${t.concluida()} ? 'ok'">
-      <div><b th:text="${t.nome()}"></b>
-        <div class="tags">
-          <span class="pill" th:style="${'background:' + t.turno().cor + '22;color:' + t.turno().cor}" th:text="${t.turno().rotulo}"></span>
-          <span class="pill" th:classappend="${t.prio().css}" th:text="${t.prio().rotulo}"></span><span class="mu">prioridade</span>
-          <span class="pill" th:classappend="${t.urg().css}" th:text="${t.urg().rotulo}"></span><span class="mu">urgência</span>
-          <span class="pill" th:classappend="${t.scoreCss()}" th:text="${'score ' + t.score()}"></span>
-          <span class="mu" th:text="${'previsto ' + t.duracaoFmt()}"></span>
-          <span class="cont" th:attr="data-estado=${t.estado()},data-fim=${t.fimMs()},data-seg=${t.contadorSeg()}" title="Contador da tarefa">00:00:00</span>
-          <span class="pill gasto" th:if="${t.concluida()}" th:text="${'esforço ' + t.gastoFmt() + (t.quemFez().isEmpty() ? '' : ' · ' + t.quemFez())}"></span>
-        </div></div>
-      <div class="acts">
-        <form method="post" th:action="@{/tarefas/{id}/iniciar(id=${t.id()})}" th:if="${!t.concluida() and !t.emAndamento()}"><input type="hidden" name="volta" value="/"><button class="btn s" th:disabled="${ativa != null}" title="Inicia o contador e o modo foco">▶ Iniciar</button></form>
-        <button type="button" class="btn s p" th:if="${!t.concluida()}" data-concluir th:attr="data-id=${t.id()},data-nome=${t.nome()},data-seg=${t.sugestaoGastoSeg(agora)}" th:disabled="${bloqueado and !ativa.id().equals(t.id())}">Concluir</button>
-        <form method="post" th:action="@{/tarefas/{id}/reabrir(id=${t.id()})}" th:if="${t.concluida()}"><input type="hidden" name="volta" value="/"><button class="btn s" th:disabled="${bloqueado}">Reabrir</button></form>
-        <a class="btn s" th:if="${!bloqueado}" th:href="@{/(editar=${t.id()})}">Editar</a><span class="btn s off" th:if="${bloqueado}">Editar</span>
-        <form method="post" th:action="@{/tarefas/{id}/remover(id=${t.id()})}" onsubmit="return confirm('Remover esta tarefa?')"><button class="btn s d" th:disabled="${bloqueado}">Remover</button></form>
+    <p class="mu" style="margin:0 0 4px">Clique em uma tarefa para ver os detalhes e as ações. Ordem: score (prioridade × 2 + urgência × 3).</p>
+    <div class="card" th:if="${#lists.isEmpty(tarefas)}"><p class="mu" style="margin:0">Nenhuma tarefa para hoje. Cadastre uma ao lado. Sem tarefas, o dia é neutro na sua sequência.</p></div>
+
+    <div class="tcard" th:each="t : ${tarefas}" th:classappend="${t.concluida()} ? 'feita' : (${t.emAndamento()} ? 'rodando' : '')">
+      <div class="tc-head" data-toggle tabindex="0" role="button" aria-expanded="false">
+        <span class="tc-ck" th:text="${t.concluida()} ? '✓' : ''"></span>
+        <div class="tc-main">
+          <b th:text="${t.nome()}"></b>
+          <div class="tc-sub">
+            <span class="chip" th:text="${t.turno().icone + ' ' + t.turno().rotulo}"></span>
+            <span class="chip" th:text="${'⏱ ' + t.duracaoFmt()}"></span>
+            <span class="chip grupo" th:if="${t.doGrupo()}" th:text="${'👥 ' + (grupos != null and grupos.get(t.grupoId()) != null ? grupos.get(t.grupoId()) : 'Grupo')}"></span>
+            <span class="cont" th:attr="data-estado=${t.estado()},data-fim=${t.fimMs()},data-seg=${t.contadorSeg()}" title="Contador da tarefa">00:00:00</span>
+          </div>
+        </div>
+        <div class="tc-lado">
+          <form method="post" th:action="@{/tarefas/{id}/iniciar(id=${t.id()})}" th:if="${!t.concluida() and !t.emAndamento()}"><input type="hidden" name="volta" value="/"><button class="btn s" th:disabled="${ativa != null}" title="Inicia o contador e o modo foco">▶ Iniciar</button></form>
+          <button type="button" class="btn s p" th:if="${!t.concluida()}" data-concluir th:attr="data-id=${t.id()},data-nome=${t.nome()},data-seg=${t.sugestaoGastoSeg(agora)}" th:disabled="${bloqueado and !ativa.id().equals(t.id())}">Concluir</button>
+          <span class="score" title="Importância: prioridade × 2 + urgência × 3" th:text="${t.score()}"></span>
+          <span class="tc-seta">▾</span>
+        </div>
+      </div>
+      <div class="tc-corpo">
+        <p class="mu" style="margin:0" th:if="${t.descricao() != null and !t.descricao().isBlank()}" th:text="${t.descricao()}"></p>
+        <div class="info3">
+          <div class="info"><small>Prioridade</small><span class="meter" th:attr="data-n=${t.prio().peso}"><i></i><i></i><i></i></span><b th:text="${t.prio().rotulo}"></b></div>
+          <div class="info"><small>Urgência</small><span class="meter" th:attr="data-n=${t.urg().peso}"><i></i><i></i><i></i></span><b th:text="${t.urg().rotulo}"></b></div>
+          <div class="info"><small>Complexidade</small><span class="meter" th:attr="data-n=${t.comp().peso}"><i></i><i></i><i></i></span><b th:text="${t.comp().rotulo}"></b></div>
+        </div>
+        <div class="mu" th:if="${t.concluida()}" th:text="${'Esforço real: ' + t.gastoFmt() + (t.quemFez().isEmpty() ? '' : ' · feita por ' + t.quemFez())}"></div>
+        <div class="acts">
+          <form method="post" th:action="@{/tarefas/{id}/reabrir(id=${t.id()})}" th:if="${t.concluida()}"><input type="hidden" name="volta" value="/"><button class="btn s" th:disabled="${bloqueado}">↩ Reabrir</button></form>
+          <a class="btn s" th:if="${!bloqueado and !t.doGrupo()}" th:href="@{/(editar=${t.id()})}">✏️ Editar</a>
+          <form method="post" th:action="@{/tarefas/{id}/remover(id=${t.id()})}" th:if="${!t.doGrupo()}" onsubmit="return confirm('Remover esta tarefa?')"><button class="btn s d" th:disabled="${bloqueado}">🗑 Remover</button></form>
+          <span class="mu" th:if="${t.doGrupo()}">Tarefa de grupo: só quem a criou pode editar ou remover.</span>
+        </div>
       </div>
     </div>
-  </div>
 
-  <div class="card" style="margin-top:16px" th:if="${!#lists.isEmpty(anteriores)}">
-    <h2>Pendentes anteriores</h2>
-    <p class="mu">Tarefas de dias passados que não foram concluídas. Nada é movido sozinho: escolha replanejar para hoje ou remover.</p>
-    <div class="item" th:each="t : ${anteriores}">
-      <div><b th:text="${t.nome()}"></b>
-        <div class="tags"><span class="pill n2" th:text="${t.dia().dayOfMonth + '/' + t.dia().monthValue}"></span><span class="mu" th:text="${'previsto ' + t.duracaoFmt()}"></span></div></div>
-      <div class="acts">
-        <form method="post" th:action="@{/tarefas/{id}/replanejar(id=${t.id()})}"><button class="btn s p" th:disabled="${bloqueado}">Replanejar para hoje</button></form>
-        <form method="post" th:action="@{/tarefas/{id}/remover(id=${t.id()})}" onsubmit="return confirm('Remover esta tarefa?')"><button class="btn s d" th:disabled="${bloqueado}">Remover</button></form>
+    <div class="card" th:if="${!#lists.isEmpty(anteriores)}" style="margin-top:18px">
+      <h2>⏳ Pendentes anteriores</h2>
+      <p class="mu">Tarefas de dias passados que não foram concluídas. Nada é movido sozinho: escolha replanejar para hoje ou remover.</p>
+      <div class="item" th:each="t : ${anteriores}">
+        <div><b th:text="${t.nome()}"></b><div class="tags"><span class="chip" th:text="${'📅 ' + t.dia().dayOfMonth + '/' + t.dia().monthValue}"></span><span class="chip" th:text="${'⏱ ' + t.duracaoFmt()}"></span></div></div>
+        <div class="acts">
+          <form method="post" th:action="@{/tarefas/{id}/replanejar(id=${t.id()})}"><button class="btn s p" th:disabled="${bloqueado}">Replanejar para hoje</button></form>
+          <form method="post" th:action="@{/tarefas/{id}/remover(id=${t.id()})}" th:if="${!t.doGrupo()}" onsubmit="return confirm('Remover esta tarefa?')"><button class="btn s d" th:disabled="${bloqueado}">Remover</button></form>
+        </div>
       </div>
     </div>
-  </div>
 
-  <div class="card" style="margin-top:16px" th:if="${!#lists.isEmpty(proximos)}">
-    <h2>Próximos dias</h2>
-    <div class="item" th:each="t : ${proximos}">
-      <div><b th:text="${t.nome()}"></b>
-        <div class="tags"><span class="pill n1" th:text="${t.dia().dayOfMonth + '/' + t.dia().monthValue}"></span><span class="mu" th:text="${'previsto ' + t.duracaoFmt()}"></span></div></div>
-      <div class="acts"><form method="post" th:action="@{/tarefas/{id}/remover(id=${t.id()})}" onsubmit="return confirm('Remover esta tarefa?')"><button class="btn s d" th:disabled="${bloqueado}">Remover</button></form></div>
+    <div class="card" th:if="${!#lists.isEmpty(proximos)}" style="margin-top:18px">
+      <h2>📅 Próximos dias</h2>
+      <div class="item" th:each="t : ${proximos}">
+        <div><b th:text="${t.nome()}"></b><div class="tags"><span class="chip" th:text="${'📅 ' + t.dia().dayOfMonth + '/' + t.dia().monthValue}"></span><span class="chip" th:text="${'⏱ ' + t.duracaoFmt()}"></span></div></div>
+        <div class="acts" th:if="${!t.doGrupo()}"><form method="post" th:action="@{/tarefas/{id}/remover(id=${t.id()})}" onsubmit="return confirm('Remover esta tarefa?')"><button class="btn s d" th:disabled="${bloqueado}">Remover</button></form></div>
+      </div>
     </div>
-  </div>
   </div>
 </div>
 </main>

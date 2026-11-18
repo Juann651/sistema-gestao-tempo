@@ -4,13 +4,14 @@
 <body th:attr="data-agora=${agora}">
 <header th:replace="~{fragmentos :: topo(${pagina})}"></header>
 <main>
+<div class="pagina-titulo"><h1>Consistência</h1><p>Conquistas desbloqueadas e o que falta para a próxima.</p></div>
 <div th:replace="~{fragmentos :: aviso}"></div>
 <div th:replace="~{fragmentos :: faixaFoco}"></div>
-<nav th:replace="~{fragmentos :: subnav(${sub})}"></nav>
+<div th:replace="~{fragmentos :: subnav(${sub})}"></div>
 <div class="aviso" th:if="${!ativo}">As conquistas estão desligadas neste servidor (falta configurar a chave de serviço do Supabase).</div>
 <div class="aviso" th:if="${falha != null}" th:text="${falha}"></div>
 <div th:if="${itens != null}">
-  <div class="ph" style="margin-bottom:12px"><h2>Conquistas</h2><span class="pill n1" th:text="${desbloqueadas + ' de ' + #lists.size(itens) + ' desbloqueadas'}"></span></div>
+  <div class="ph" style="margin-bottom:6px"><h2>Suas conquistas</h2><span class="pill ok" th:text="${desbloqueadas + ' de ' + #lists.size(itens) + ' desbloqueadas'}"></span></div>
   <p class="mu">As conquistas são iguais para todos, mas o progresso é só seu: ninguém vê as conquistas de outra pessoa. Conquistas desbloqueadas ficam com você para sempre.</p>
   <div class="conq">
     <div class="c" th:each="v : ${itens}" th:classappend="${!v.desbloqueada()} ? 'off'">

@@ -4,6 +4,7 @@
 <body th:attr="data-agora=${agora}">
 <header th:replace="~{fragmentos :: topo(${pagina})}"></header>
 <main>
+<div class="pagina-titulo"><h1>Resumo do dia</h1><p>Como está o planejamento de hoje, por turno.</p></div>
 <div th:replace="~{fragmentos :: aviso}"></div>
 <div th:replace="~{fragmentos :: faixaFoco}"></div>
 <div class="kpis">
@@ -22,7 +23,7 @@
     <p class="mu" th:if="${pendentes == 0}">Nenhuma tarefa pendente. Aproveite o dia!</p>
     <div class="lin" th:each="c : ${colunas}">
       <b><span class="dot" style="display:inline-block;margin-right:6px" th:style="${'display:inline-block;margin-right:6px;background:' + c.periodo().cor}"></span><span th:text="${c.periodo().rotulo}"></span></b>
-      <div class="bar" style="margin:0"><i th:style="${'width:' + c.percentual() + '%;background:' + (c.excesso() > 0 ? '#dc2626' : c.periodo().cor)}"></i></div>
+      <div class="bar" style="margin:0"><i th:style="${'width:' + c.percentual() + '%'}" th:classappend="${c.excesso() > 0} ? 'estouro'"></i></div>
       <span class="mu" th:text="${c.usadoFmt() + ' de ' + c.capacidadeFmt() + ' · ' + c.tarefas().size() + ' tarefa(s)'}"></span>
     </div>
   </div>
@@ -31,7 +32,7 @@
       <h2>Próximas tarefas</h2>
       <p class="mu" th:if="${#lists.isEmpty(proximas)}">Nada pendente.</p>
       <div class="item" th:each="t : ${proximas}">
-        <div><b th:text="${t.nome()}"></b><div class="tags"><span class="pill" th:style="${'background:' + t.turno().cor + '22;color:' + t.turno().cor}" th:text="${t.turno().rotulo}"></span><span class="mu" th:text="${t.duracaoFmt()}"></span><span class="cont" th:attr="data-estado=${t.estado()},data-fim=${t.fimMs()},data-seg=${t.contadorSeg()}">00:00:00</span></div></div>
+        <div><b th:text="${t.nome()}"></b><div class="tags"><span class="chip" th:text="${t.turno().icone + ' ' + t.turno().rotulo}"></span><span class="chip" th:text="${'⏱ ' + t.duracaoFmt()}"></span><span class="cont" th:attr="data-estado=${t.estado()},data-fim=${t.fimMs()},data-seg=${t.contadorSeg()}">00:00:00</span></div></div>
         <span class="pill" th:classappend="${t.scoreCss()}" th:text="${'score ' + t.score()}"></span>
       </div>
     </div>

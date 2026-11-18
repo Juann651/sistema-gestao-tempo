@@ -33,7 +33,17 @@ public class Contexto {
         m.addAttribute("bloqueado", bloqueado);
         m.addAttribute("agora", agora);
         m.addAttribute("pagina", pagina);
+        if (cons.ativo()) m.addAttribute("hojeProg", MotorConsistencia.progresso(ConsistenciaService.tarefasDoDia(ts, Tempo.hoje()), cons.config()));
         return bloqueado;
+    }
+
+    /** Opções dos cartões de escolha (prioridade, urgência, complexidade e turno) com uma frase curta para cada nível. */
+    public void opcoes(Model m) {
+        m.addAttribute("niveis", Nivel.values());
+        m.addAttribute("periodos", Periodo.values());
+        m.addAttribute("descPrioridade", List.of("Pode esperar", "Importante", "Essencial"));
+        m.addAttribute("descUrgencia", List.of("Sem pressa", "Em breve", "Para já"));
+        m.addAttribute("descComplexidade", List.of("Simples e rápida", "Exige atenção", "Exige muito foco"));
     }
 
     /** base + fechamento dos dias (no máximo a cada 30 s) para mostrar a chama e avisar de conquistas novas. */

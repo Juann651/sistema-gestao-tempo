@@ -4,6 +4,7 @@
 <body th:attr="data-agora=${agora}">
 <header th:replace="~{fragmentos :: topo(${pagina})}"></header>
 <main>
+<div class="pagina-titulo"><h1>Agenda do dia</h1><p>Suas tarefas de hoje organizadas por turno. Use os ícones para mover uma tarefa de turno.</p></div>
 <div th:replace="~{fragmentos :: aviso}"></div>
 <div th:replace="~{fragmentos :: faixaFoco}"></div>
 <div class="cols">
@@ -20,18 +21,18 @@
       <input type="number" name="segundos" min="0" max="59" th:value="${c.capS()}" aria-label="Segundos" th:disabled="${bloqueado}"><small>s</small>
       <button class="btn s" th:disabled="${bloqueado}">Salvar</button>
     </form>
-    <div class="bar"><i th:style="${'width:' + c.percentual() + '%;background:' + (c.excesso() > 0 ? '#dc2626' : c.periodo().cor)}"></i></div>
+    <div class="bar"><i th:style="${'width:' + c.percentual() + '%'}" th:classappend="${c.excesso() > 0} ? 'estouro'"></i></div>
     <div class="mu" th:text="${c.usadoFmt() + ' de ' + c.capacidadeFmt()}"></div>
     <div class="warn" th:if="${c.excesso() > 0}" th:text="${'Passou ' + c.excessoFmt() + ' da capacidade. Mova tarefas para outro turno.'}"></div>
-    <div class="t" th:each="t : ${c.tarefas()}" th:style="${'border-left-color:' + c.periodo().cor}" th:classappend="${t.emAndamento()} ? 'rodando'">
+    <div class="t" th:each="t : ${c.tarefas()}" th:classappend="${t.emAndamento()} ? 'rodando'">
       <b th:text="${t.nome()}"></b>
-      <div class="mu" th:text="${t.duracaoFmt() + ' · complexidade ' + t.comp().rotulo + ' · score ' + t.score()}"></div>
+      <div class="tags"><span class="chip" th:text="${'⏱ ' + t.duracaoFmt()}"></span><span class="chip" th:text="${'Complexidade ' + t.comp().rotulo}"></span><span class="chip" th:text="${'Score ' + t.score()}"></span></div>
       <div class="tags"><span class="cont" th:attr="data-estado=${t.estado()},data-fim=${t.fimMs()},data-seg=${t.contadorSeg()}" title="Contador da tarefa">00:00:00</span></div>
       <div class="acts mini">
         <form method="post" th:action="@{/tarefas/{id}/iniciar(id=${t.id()})}" th:if="${!t.emAndamento()}"><input type="hidden" name="volta" value="/agenda"><button class="btn s" th:disabled="${ativa != null}">▶ Iniciar</button></form>
         <button type="button" class="btn s p" data-concluir th:attr="data-id=${t.id()},data-nome=${t.nome()},data-seg=${t.sugestaoGastoSeg(agora)}" th:disabled="${bloqueado and !ativa.id().equals(t.id())}">Concluir</button>
       </div>
-      <form method="post" th:action="@{/tarefas/{id}/turno(id=${t.id()})}"><select name="periodo" aria-label="Mover para outro turno" onchange="this.form.submit()" th:disabled="${bloqueado}"><option th:each="p : ${periodos}" th:value="${p.codigo}" th:text="${p.rotulo}" th:selected="${p == c.periodo()}"></option></select></form>
+      <form method="post" th:action="@{/tarefas/{id}/turno(id=${t.id()})}" class="mover"><small>Mover para</small><button class="mv" th:each="p : ${periodos}" name="periodo" th:value="${p.codigo}" th:classappend="${p == c.periodo()} ? 'on'" th:text="${p.icone}" th:title="${p.rotulo}" th:disabled="${bloqueado}"></button></form>
     </div>
     <p class="mu" th:if="${#lists.isEmpty(c.tarefas())}">Nenhuma tarefa neste turno.</p>
   </div>

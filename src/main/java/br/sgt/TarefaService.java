@@ -105,6 +105,8 @@ public class TarefaService {
         List<Tarefa> ts = listar(s);
         Tarefa t = achar(ts, id);
         exigirLivre(ts);
+        if (t.doGrupo() && !dados.keySet().stream().allMatch("periodo"::equals))
+            throw new ErroSupabase(403, "Esta tarefa foi atribuída por um grupo: só quem a criou pode editá-la. Você pode mudar o turno, iniciar e concluir.");
         gravar(s, id, dados);
         return t;
     }
@@ -119,6 +121,7 @@ public class TarefaService {
         List<Tarefa> ts = listar(s);
         Tarefa t = achar(ts, id);
         exigirLivre(ts);
+        if (t.doGrupo()) throw new ErroSupabase(403, "Esta tarefa foi atribuída por um grupo e não pode ser removida por aqui. Peça a quem a criou ou saia do grupo.");
         s.chamar(x -> { sb.remover(x, id); return null; });
         return t;
     }
@@ -134,6 +137,13 @@ public class TarefaService {
         if (t.concluida()) throw new ErroSupabase(400, "«" + t.nome() + "» já está concluída.");
         if (t.replanejada()) throw new ErroSupabase(400, "«" + t.nome() + "» já foi replanejada.");
         if (!t.dia().isBefore(Tempo.hoje())) throw new ErroSupabase(400, "Só tarefas de dias anteriores podem ser replanejadas.");
+        if (t.doGrupo()) {   // tarefa de grupo: muda o dia da própria cópia (assim ela continua ligada ao grupo)
+            Map<String, Object> mover = new HashMap<>();
+            mover.put("data", Tempo.hoje().toString());
+            mover.put("iniciada_em", null);
+            gravar(s, id, mover);
+            return t;
+        }
         gravar(s, null, dados(t.nome(), t.descricao(), Nivel.de(t.prioridade()), Nivel.de(t.urgencia()),
                 Nivel.de(t.complexidade()), t.duracao(), t.turno(), Tempo.hoje()));
         Map<String, Object> d = new HashMap<>();

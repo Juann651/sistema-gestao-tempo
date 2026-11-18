@@ -21,8 +21,11 @@ public class SgtController {
     private final SupabaseService sb;
     private final TarefaService svc;
     private final Contexto ctx;
+    private final GrupoService grupos;
 
-    public SgtController(SupabaseService sb, TarefaService svc, Contexto ctx) { this.sb = sb; this.svc = svc; this.ctx = ctx; }
+    public SgtController(SupabaseService sb, TarefaService svc, Contexto ctx, GrupoService grupos) {
+        this.sb = sb; this.svc = svc; this.ctx = ctx; this.grupos = grupos;
+    }
 
     /** Uma coluna da agenda. Tempos em SEGUNDOS. */
     public record Coluna(Periodo periodo, List<Tarefa> tarefas, int usado, int capacidade) {
@@ -91,8 +94,8 @@ public class SgtController {
         m.addAttribute("proximos", todas.stream().filter(t -> t.dia().isAfter(hoje)).sorted(Comparator.comparing(Tarefa::dia)).toList());
         m.addAttribute("hojeIso", hoje.toString());
         m.addAttribute("dataHoje", Tempo.diaSemana(hoje) + ", " + Tempo.data(hoje));
-        m.addAttribute("niveis", Nivel.values());
-        m.addAttribute("periodos", Periodo.values());
+        ctx.opcoes(m);
+        if (todas.stream().anyMatch(Tarefa::doGrupo)) m.addAttribute("grupos", grupos.nomes(Contexto.sessao(s).userId()));
         m.addAttribute("edit", editar == null || bloqueado ? null : todas.stream().filter(t -> t.id().equals(editar)).findFirst().orElse(null));
         return "tarefas";
     }

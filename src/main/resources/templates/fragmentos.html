@@ -1,16 +1,28 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <body>
-<header th:fragment="topo(pagina)">
-  <div><h1>SGT</h1><small>Organize seu tempo com inteligência</small></div>
-  <nav><a th:href="@{/}" th:classappend="${pagina == 'tarefas'} ? 'on'">Tarefas</a><a th:href="@{/agenda}" th:classappend="${pagina == 'agenda'} ? 'on'">Agenda</a><a th:href="@{/resumo}" th:classappend="${pagina == 'resumo'} ? 'on'">Resumo</a><a th:href="@{/consistencia}" th:classappend="${pagina == 'consistencia' or pagina == 'conquistas' or pagina == 'historico'} ? 'on'">Consistência</a><a th:if="${papel == 'ADMIN'}" th:href="@{/admin}" th:classappend="${pagina == 'admin'} ? 'on'">Admin</a></nav>
-  <div class="dir"><a class="chama-top" th:if="${chama != null and chama > 0}" th:href="@{/consistencia}" th:text="${'🔥 ' + chama}" title="Sua sequência de dias"></a><a class="btn s" th:href="@{/sair}">Sair</a></div>
+<header class="topo" th:fragment="topo(pagina)">
+  <div class="topo-in">
+    <a class="logo" th:href="@{/}"><span class="logo-i">⏱</span><span><b>SGT</b><small>Organize seu tempo</small></span></a>
+    <div class="menu">
+      <a th:href="@{/}" th:classappend="${pagina == 'tarefas'} ? 'on'">📝 Tarefas</a>
+      <a th:href="@{/agenda}" th:classappend="${pagina == 'agenda'} ? 'on'">🗓️ Agenda</a>
+      <a th:href="@{/resumo}" th:classappend="${pagina == 'resumo'} ? 'on'">📊 Resumo</a>
+      <a th:href="@{/grupos}" th:classappend="${pagina == 'grupos'} ? 'on'">👥 Grupos</a>
+      <a th:href="@{/consistencia}" th:classappend="${pagina == 'consistencia' or pagina == 'conquistas' or pagina == 'historico'} ? 'on'">🔥 Consistência</a>
+      <a th:if="${papel == 'ADMIN'}" th:href="@{/admin}" th:classappend="${pagina == 'admin'} ? 'on'">🛡️ Admin</a>
+    </div>
+    <div class="dir"><a class="btn s" th:href="@{/sair}">Sair</a></div>
+  </div>
 </header>
-<nav th:fragment="subnav(sub)" class="subnav">
+
+<!-- abas da área de consistência -->
+<div th:fragment="subnav(sub)" class="abas">
   <a th:href="@{/consistencia}" th:classappend="${sub == 'painel'} ? 'on'">🔥 Minha consistência</a>
   <a th:href="@{/conquistas}" th:classappend="${sub == 'conquistas'} ? 'on'">🏆 Conquistas</a>
   <a th:href="@{/historico}" th:classappend="${sub == 'historico'} ? 'on'">🗓️ Histórico</a>
-</nav>
+</div>
+
 <div th:fragment="aviso" class="aviso" th:if="${aviso != null}" th:text="${aviso}"></div>
 
 <!-- Faixa do modo foco: aparece em todas as telas enquanto houver tarefa em andamento -->
@@ -23,7 +35,7 @@
   <button type="button" class="btn p" data-concluir th:attr="data-id=${ativa.id()},data-nome=${ativa.nome()},data-seg=${ativa.sugestaoGastoSeg(agora)}">Concluir</button>
 </div>
 
-<!-- Pop-up de tempo gasto + script (incluir uma vez no fim do body) -->
+<!-- Pop-up de tempo gasto + foguinho flutuante + script (incluir uma vez no fim do body) -->
 <div th:fragment="rodape">
   <dialog id="dlgGasto" class="dlg" aria-labelledby="gastoTitulo">
     <form method="post" id="frmGasto">
@@ -39,6 +51,25 @@
       <div class="acts"><button class="btn p">Salvar e concluir</button><button type="button" class="btn" data-fechar>Cancelar</button></div>
     </form>
   </dialog>
+
+  <!-- 🔥 atalho rápido: sequência, meta de hoje e links -->
+  <details class="fab" th:if="${chama != null}">
+    <summary aria-label="Abrir atalho da consistência"><span class="fogo">🔥</span><b th:text="${chama}"></b></summary>
+    <div class="fab-painel">
+      <div class="fab-topo"><b th:text="${chama + (chama == 1 ? ' dia' : ' dias')}"></b> <span class="mu">de sequência</span></div>
+      <div th:if="${hojeProg != null}" style="margin-top:10px">
+        <div th:if="${hojeProg.total() == 0}" class="mu">Sem tarefas hoje: dia neutro (não quebra a sequência).</div>
+        <div th:if="${hojeProg.total() > 0}">
+          <b th:text="${'Hoje: ' + hojeProg.feitas() + ' de ' + hojeProg.total() + ' tarefas'}"></b>
+          <div class="bar"><i th:style="${'width:' + hojeProg.taxa() + '%'}"></i></div>
+          <div class="mu" th:text="${hojeProg.meta() ? 'Meta batida! Mantenha até a meia-noite 🔥' : 'Faltam ' + hojeProg.faltam() + (hojeProg.faltam() == 1 ? ' tarefa' : ' tarefas') + ' para ganhar o dia'}"></div>
+        </div>
+      </div>
+      <a class="btn p" th:href="@{/#nova}">➕ Nova tarefa</a>
+      <a class="btn" th:href="@{/consistencia}">📈 Ver minha consistência</a>
+      <a class="btn" th:href="@{/conquistas}">🏆 Conquistas</a>
+    </div>
+  </details>
 
   <script th:src="@{/app.js}"></script>
 </div>

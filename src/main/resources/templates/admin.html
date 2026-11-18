@@ -5,16 +5,16 @@
 <header th:replace="~{fragmentos :: topo(${pagina})}"></header>
 <main>
 <div th:replace="~{fragmentos :: aviso}"></div>
-<div class="ph" style="margin-bottom:12px"><h2>Painel administrativo</h2><span class="pill n3">ADMIN</span></div>
+<div class="pagina-titulo"><div class="linha"><h1>Painel administrativo</h1><span class="pill n3">ADMIN</span></div><p>Gerencie usuários, conquistas e as regras da consistência.</p></div>
 <div class="aviso" th:if="${!ativo}">O painel precisa da variável <b>SUPABASE_SERVICE_KEY</b> no servidor e da seção 5 do <b>schema.sql</b> executada no Supabase.</div>
 
 <div th:if="${ativo}">
-<nav class="subnav">
+<div class="abas">
   <a th:href="@{/admin}" th:classappend="${aba == 'visao'} ? 'on'">Visão geral</a>
   <a th:href="@{/admin(aba='usuarios')}" th:classappend="${aba == 'usuarios'} ? 'on'">Usuários</a>
   <a th:href="@{/admin(aba='conquistas')}" th:classappend="${aba == 'conquistas'} ? 'on'">Conquistas</a>
   <a th:href="@{/admin(aba='regras')}" th:classappend="${aba == 'regras'} ? 'on'">Regras da consistência</a>
-</nav>
+</div>
 
 <div class="kpis" th:if="${aba == 'visao'}">
   <div class="card kpi"><span class="mu">USUÁRIOS CADASTRADOS</span><b th:text="${usuarios}"></b></div>
@@ -31,7 +31,7 @@
     <tr><th>E-mail</th><th>Papel</th><th>Sequência</th><th>Recorde</th><th>Desde</th><th>Alterar papel</th></tr>
     <tr th:each="l : ${linhas}">
       <td th:text="${l.perfil().email()}"></td>
-      <td><span class="pill" th:classappend="${l.perfil().admin()} ? 'n3' : 'n1'" th:text="${l.perfil().role()}"></span></td>
+      <td><span class="pill" th:classappend="${l.perfil().admin()} ? 'n3' : 'n2'" th:text="${l.perfil().role()}"></span></td>
       <td th:text="${l.seq() == null ? 0 : l.seq().atual()}"></td>
       <td th:text="${l.seq() == null ? 0 : l.seq().recorde()}"></td>
       <td th:text="${l.perfil().criadoFmt()}"></td>
@@ -72,7 +72,7 @@
         <td><b th:text="${l.c().nome()}"></b><div class="mu" th:text="${l.c().descricao()}"></div></td>
         <td th:text="${l.c().regra()}"></td>
         <td th:text="${l.desbloqueios()}"></td>
-        <td><span class="pill" th:classappend="${l.c().ativa()} ? 'n1' : 'n2'" th:text="${l.c().ativa() ? 'Ativa' : 'Desativada'}"></span></td>
+        <td><span class="pill" th:classappend="${l.c().ativa()} ? 'ok' : 'n2'" th:text="${l.c().ativa() ? 'Ativa' : 'Desativada'}"></span></td>
         <td><div class="acts" style="margin:0">
           <a class="btn s" th:href="@{/admin(aba='conquistas',editar=${l.c().id()})}">Editar</a>
           <form method="post" th:action="@{/admin/conquistas/{id}/ativa(id=${l.c().id()})}"><input type="hidden" name="ativa" th:value="${!l.c().ativa()}"><button class="btn s" th:text="${l.c().ativa() ? 'Desativar' : 'Ativar'}"></button></form>

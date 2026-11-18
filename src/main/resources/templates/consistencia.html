@@ -4,9 +4,10 @@
 <body th:attr="data-agora=${agora}">
 <header th:replace="~{fragmentos :: topo(${pagina})}"></header>
 <main>
+<div class="pagina-titulo"><h1>Consistência</h1><p>Sua sequência de dias, a meta de hoje e seus dias de descanso.</p></div>
 <div th:replace="~{fragmentos :: aviso}"></div>
 <div th:replace="~{fragmentos :: faixaFoco}"></div>
-<nav th:replace="~{fragmentos :: subnav(${sub})}"></nav>
+<div th:replace="~{fragmentos :: subnav(${sub})}"></div>
 
 <div class="aviso" th:if="${!ativo}">A consistência está desligada neste servidor. Quem administra o SGT precisa configurar a variável <b>SUPABASE_SERVICE_KEY</b> e executar a seção 5 do <b>schema.sql</b>.</div>
 <div class="aviso" th:if="${falha != null}" th:text="${falha}"></div>
@@ -14,7 +15,7 @@
 <div th:if="${painel != null}">
   <div class="cols resumo">
     <div class="card">
-      <div class="ph"><h2>Minha consistência</h2><span class="pill" th:classappend="${painel.seq().atual() > 0} ? 'n1' : 'n2'" th:text="${painel.seq().atual() > 0} ? 'Em andamento' : 'Comece hoje'"></span></div>
+      <div class="ph"><h2>Minha consistência</h2><span class="pill" th:classappend="${painel.seq().atual() > 0} ? 'ok' : 'n2'" th:text="${painel.seq().atual() > 0} ? 'Em andamento' : 'Comece hoje'"></span></div>
       <div class="chama" th:text="${'🔥 ' + painel.seq().atual() + (painel.seq().atual() == 1 ? ' dia' : ' dias')}"></div>
       <p class="mu" style="text-align:center" th:text="${'Sua maior sequência: ' + painel.seq().recorde() + (painel.seq().recorde() == 1 ? ' dia' : ' dias')}"></p>
       <p class="mu" style="text-align:center" th:title="'A cada ' + ${painel.cfg().protetorACada()} + ' dias seguidos você ganha um protetor (máximo ' + ${painel.cfg().maxProtetores()} + ').'">

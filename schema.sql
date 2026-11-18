@@ -155,3 +155,33 @@ create policy descanso_proprio on public.dias_descanso for select to authenticat
 
 -- 5.7) PRIMEIRO ADMINISTRADOR (e-mail já preenchido). Depois, use o painel /admin para promover outros.
 update public.perfis set role = 'ADMIN' where email = 'juansantosleal651@gmail.com';
+
+-- =====================================================================================================
+-- 6) GRUPOS (família / equipe e turma): dividir tarefas entre pessoas  (pode rodar de novo sem problema)
+--    Cada membro recebe a SUA cópia da tarefa (com seu contador, modo foco e tempo gasto).
+-- =====================================================================================================
+create table if not exists public.grupos (
+  id        uuid primary key default gen_random_uuid(),
+  nome      text not null,
+  tipo      text not null default 'FAMILIA' check (tipo in ('FAMILIA','TURMA')),
+  dono_id   uuid not null references auth.users(id) on delete cascade,
+  codigo    text not null unique,                 -- código de convite
+  criado_em timestamptz not null default now()
+);
+create table if not exists public.grupo_membros (
+  grupo_id  uuid not null references public.grupos(id) on delete cascade,
+  user_id   uuid not null references auth.users(id) on delete cascade,
+  entrou_em timestamptz not null default now(),
+  primary key (grupo_id, user_id)
+);
+create index if not exists grupo_membros_user on public.grupo_membros (user_id);
+
+-- ligação das tarefas com o grupo (se o grupo for excluído, as tarefas continuam como pessoais)
+alter table public.tarefas add column if not exists grupo_id        uuid references public.grupos(id) on delete set null;
+alter table public.tarefas add column if not exists grupo_tarefa_id uuid;
+alter table public.tarefas add column if not exists criada_por      uuid;
+create index if not exists tarefas_grupo on public.tarefas (grupo_id, grupo_tarefa_id);
+
+-- RLS ligada e SEM políticas: só o servidor (service_role) lê e grava grupos e membros.
+alter table public.grupos         enable row level security;
+alter table public.grupo_membros  enable row level security;

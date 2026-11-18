@@ -19,7 +19,13 @@ public record Tarefa(String id, String nome, String descricao, int prioridade, i
                      @JsonProperty("concluida_por") String concluidaPor,
                      String email,
                      String data,
-                     @JsonProperty("replanejada_em") String replanejadaEm) {
+                     @JsonProperty("replanejada_em") String replanejadaEm,
+                     @JsonProperty("user_id") String userId,
+                     @JsonProperty("grupo_id") String grupoId,
+                     @JsonProperty("grupo_tarefa_id") String grupoTarefaId,
+                     @JsonProperty("criada_por") String criadaPor) {
+    /** Tarefa atribuída por um grupo (cada membro tem a sua própria cópia, com seu contador e seu modo foco). */
+    public boolean doGrupo() { return grupoId != null && !grupoId.isBlank(); }
     // ---------- dia planejado ----------
     /** Dia (fuso de Brasília) para o qual a tarefa foi planejada. Sem valor no banco = hoje. */
     public LocalDate dia() {

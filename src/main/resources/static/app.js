@@ -36,6 +36,21 @@
   tick();
   setInterval(tick, 1000);
 
+  // ---------- cartão de tarefa: clique abre/fecha os detalhes ----------
+  function alternar(cab) {
+    var card = cab.parentNode;
+    var aberto = card.classList.toggle('aberto');
+    cab.setAttribute('aria-expanded', aberto ? 'true' : 'false');
+  }
+  document.addEventListener('click', function (e) {
+    var cab = e.target.closest ? e.target.closest('[data-toggle]') : null;
+    if (!cab || e.target.closest('button, a, form, input, select, label')) return;
+    alternar(cab);
+  });
+  document.addEventListener('keydown', function (e) {
+    if ((e.key === 'Enter' || e.key === ' ') && e.target.hasAttribute && e.target.hasAttribute('data-toggle')) { e.preventDefault(); alternar(e.target); }
+  });
+
   // ---------- pop-up de tempo gasto ----------
   var dlg = document.getElementById('dlgGasto');
   var frm = document.getElementById('frmGasto');

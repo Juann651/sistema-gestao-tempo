@@ -264,6 +264,108 @@ public class SupabaseService {
         servico(HttpMethod.DELETE, "/rest/v1/dias_descanso?user_id=eq." + id(userId) + "&data=eq." + dia, null, null);
     }
 
+    // ---------- grupos (família / turma) — sempre pelo servidor, com a chave de serviço ----------
+    private static final java.util.regex.Pattern CODIGO = java.util.regex.Pattern.compile("[A-Z0-9]{4,12}");
+
+    private static String lista(Iterable<String> ids) {
+        StringBuilder b = new StringBuilder();
+        for (String x : ids) { if (b.length() > 0) b.append(','); b.append(id(x)); }
+        return b.toString();
+    }
+
+    public Grupo criarGrupo(String nome, String tipo, String donoId, String codigo) {
+        JsonNode n = servico(HttpMethod.POST, "/rest/v1/grupos",
+                Map.of("nome", nome, "tipo", tipo, "dono_id", id(donoId), "codigo", codigo), "return=representation");
+        List<Grupo> l = n == null ? List.of() : JSON.convertValue(n, new TypeReference<List<Grupo>>() { });
+        if (l.isEmpty()) throw new ErroSupabase(500, "Não foi possível criar o grupo.");
+        return l.get(0);
+    }
+
+    public Grupo grupo(String grupoId) {
+        JsonNode n = servico(HttpMethod.GET, "/rest/v1/grupos?select=*&id=eq." + id(grupoId), null, null);
+        List<Grupo> l = n == null ? List.of() : JSON.convertValue(n, new TypeReference<List<Grupo>>() { });
+        return l.isEmpty() ? null : l.get(0);
+    }
+
+    public Grupo grupoPorCodigo(String codigo) {
+        if (codigo == null || !CODIGO.matcher(codigo).matches()) return null;
+        JsonNode n = servico(HttpMethod.GET, "/rest/v1/grupos?select=*&codigo=eq." + codigo, null, null);
+        List<Grupo> l = n == null ? List.of() : JSON.convertValue(n, new TypeReference<List<Grupo>>() { });
+        return l.isEmpty() ? null : l.get(0);
+    }
+
+    public List<Grupo> gruposDoUsuario(String userId) {
+        List<String> ids = new ArrayList<>();
+        JsonNode m = servico(HttpMethod.GET, "/rest/v1/grupo_membros?select=grupo_id&user_id=eq." + id(userId), null, null);
+        if (m != null) m.forEach(x -> ids.add(x.get("grupo_id").asText()));
+        if (ids.isEmpty()) return List.of();
+        JsonNode n = servico(HttpMethod.GET, "/rest/v1/grupos?select=*&order=criado_em&id=in.(" + lista(ids) + ")", null, null);
+        return n == null ? List.of() : JSON.convertValue(n, new TypeReference<List<Grupo>>() { });
+    }
+
+    public List<String> idsMembros(String grupoId) {
+        List<String> ids = new ArrayList<>();
+        JsonNode n = servico(HttpMethod.GET, "/rest/v1/grupo_membros?select=user_id&grupo_id=eq." + id(grupoId), null, null);
+        if (n != null) n.forEach(x -> ids.add(x.get("user_id").asText()));
+        return ids;
+    }
+
+    /** grupo_id -> quantidade de membros, para a lista de grupos. */
+    public Map<String, Integer> contagemMembros(List<String> grupoIds) {
+        Map<String, Integer> m = new LinkedHashMap<>();
+        if (grupoIds.isEmpty()) return m;
+        JsonNode n = servico(HttpMethod.GET, "/rest/v1/grupo_membros?select=grupo_id&grupo_id=in.(" + lista(grupoIds) + ")", null, null);
+        if (n != null) n.forEach(x -> m.merge(x.get("grupo_id").asText(), 1, Integer::sum));
+        return m;
+    }
+
+    public Map<String, Perfil> perfisPorId(List<String> userIds) {
+        Map<String, Perfil> m = new LinkedHashMap<>();
+        if (userIds.isEmpty()) return m;
+        JsonNode n = servico(HttpMethod.GET, "/rest/v1/perfis?select=*&id=in.(" + lista(userIds) + ")", null, null);
+        List<Perfil> l = n == null ? List.of() : JSON.convertValue(n, new TypeReference<List<Perfil>>() { });
+        for (Perfil p : l) m.put(p.id(), p);
+        return m;
+    }
+
+    public void adicionarMembro(String grupoId, String userId) {
+        servico(HttpMethod.POST, "/rest/v1/grupo_membros?on_conflict=grupo_id,user_id",
+                Map.of("grupo_id", id(grupoId), "user_id", id(userId)), "resolution=ignore-duplicates");
+    }
+
+    public void removerMembro(String grupoId, String userId) {
+        servico(HttpMethod.DELETE, "/rest/v1/grupo_membros?grupo_id=eq." + id(grupoId) + "&user_id=eq." + id(userId), null, null);
+    }
+
+    /** Ao sair/ser removido, as tarefas já recebidas viram tarefas pessoais (nada é apagado). */
+    public void desvincularTarefas(String grupoId, String userId) {
+        Map<String, Object> d = new java.util.HashMap<>();
+        d.put("grupo_id", null);
+        d.put("grupo_tarefa_id", null);
+        servico(HttpMethod.PATCH, "/rest/v1/tarefas?grupo_id=eq." + id(grupoId) + "&user_id=eq." + id(userId), d, null);
+    }
+
+    public void excluirGrupo(String grupoId) {
+        servico(HttpMethod.DELETE, "/rest/v1/grupos?id=eq." + id(grupoId), null, null);
+    }
+
+    public void trocarCodigo(String grupoId, String codigo) {
+        servico(HttpMethod.PATCH, "/rest/v1/grupos?id=eq." + id(grupoId), Map.of("codigo", codigo), null);
+    }
+
+    public List<Tarefa> tarefasDoGrupo(String grupoId) {
+        JsonNode n = servico(HttpMethod.GET, "/rest/v1/tarefas?select=*&grupo_id=eq." + id(grupoId) + "&order=data.desc&limit=500", null, null);
+        return n == null ? List.of() : JSON.convertValue(n, new TypeReference<List<Tarefa>>() { });
+    }
+
+    public void criarTarefasDoGrupo(List<Map<String, Object>> linhas) {
+        if (!linhas.isEmpty()) servico(HttpMethod.POST, "/rest/v1/tarefas", linhas, null);
+    }
+
+    public void removerTarefaDoGrupo(String grupoId, String grupoTarefaId) {
+        servico(HttpMethod.DELETE, "/rest/v1/tarefas?grupo_id=eq." + id(grupoId) + "&grupo_tarefa_id=eq." + id(grupoTarefaId), null, null);
+    }
+
     // ---------- infraestrutura ----------
     private static String id(String valor) {
         try { return UUID.fromString(valor).toString(); } catch (Exception e) { throw new ErroSupabase(400, "Identificador inválido."); }

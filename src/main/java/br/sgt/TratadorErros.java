@@ -41,6 +41,10 @@ public class TratadorErros {
         if (rq.getMethod().equals("GET")) { m.addAttribute("mensagem", e.getMessage()); return "erro"; }
         s.setAttribute("aviso", e.getMessage());
         String uri = rq.getRequestURI();
+        if (uri.startsWith("/grupos")) {
+            String[] p = uri.split("/");   // /grupos/{id}/... volta para a página do grupo
+            return p.length >= 3 && !p[2].equals("entrar") ? "redirect:/grupos/" + p[2] : "redirect:/grupos";
+        }
         return uri.startsWith("/admin") ? "redirect:/admin" : uri.startsWith("/consistencia") ? "redirect:/consistencia" : "redirect:/";
     }
 }

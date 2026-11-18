@@ -4,13 +4,14 @@
 <body th:attr="data-agora=${agora}">
 <header th:replace="~{fragmentos :: topo(${pagina})}"></header>
 <main>
+<div class="pagina-titulo"><h1>Consistência</h1><p>Resultado de cada dia encerrado e suas tarefas.</p></div>
 <div th:replace="~{fragmentos :: aviso}"></div>
 <div th:replace="~{fragmentos :: faixaFoco}"></div>
-<nav th:replace="~{fragmentos :: subnav(${sub})}"></nav>
+<div th:replace="~{fragmentos :: subnav(${sub})}"></div>
 <div class="aviso" th:if="${!ativo}">O histórico de dias está desligado neste servidor (falta configurar a chave de serviço do Supabase).</div>
 <div class="aviso" th:if="${falha != null}" th:text="${falha}"></div>
 <div th:if="${dias != null}">
-  <h2>Histórico dos últimos 60 dias</h2>
+  <h2>Últimos 60 dias</h2>
   <p class="mu">Cada dia encerrado guarda seu resultado e suas tarefas. Nada é apagado ou movido automaticamente.</p>
   <p class="mu" th:if="${#lists.isEmpty(dias)}">Ainda não há dias encerrados. Seu primeiro dia fecha hoje, à meia-noite.</p>
   <div class="card" style="margin-bottom:12px" th:each="d : ${dias}">
@@ -22,7 +23,7 @@
     <p class="mu" th:if="${d.registro().total() == 0}">Nenhuma tarefa planejada.</p>
     <div class="item" th:each="t : ${d.tarefas()}">
       <div><b th:text="${(t.concluida() ? '✅ ' : '⬜ ') + t.nome()}"></b></div>
-      <span class="pill" th:classappend="${t.concluida()} ? 'n1' : 'n2'" th:text="${t.concluida() ? 'Concluída' : (t.replanejada() ? 'Não concluída · replanejada' : 'Não concluída')}"></span>
+      <span class="pill" th:classappend="${t.concluida()} ? 'ok' : 'n2'" th:text="${t.concluida() ? 'Concluída' : (t.replanejada() ? 'Não concluída · replanejada' : 'Não concluída')}"></span>
     </div>
   </div>
 </div>

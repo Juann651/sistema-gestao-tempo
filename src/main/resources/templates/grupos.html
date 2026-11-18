@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>SGT · Grupos</title><link rel="stylesheet" th:href="@{/style.css}"></head>
+<body th:attr="data-agora=${agora}">
+<header th:replace="~{fragmentos :: topo(${pagina})}"></header>
+<main>
+<div class="pagina-titulo"><h1>Grupos</h1><p>Divida tarefas com a família, a equipe ou a turma. Cada pessoa recebe a sua própria cópia, com contador, modo foco e tempo gasto.</p></div>
+<div th:replace="~{fragmentos :: aviso}"></div>
+<div th:replace="~{fragmentos :: faixaFoco}"></div>
+
+<div class="aviso" th:if="${!ativo}">Os grupos estão desligados neste servidor: quem administra o SGT precisa configurar <b>SUPABASE_SERVICE_KEY</b> e executar a seção 6 do <b>schema.sql</b>.</div>
+<div class="aviso" th:if="${falha != null}" th:text="${falha}"></div>
+
+<div th:if="${ativo and falha == null}">
+  <div class="cols">
+    <form class="card" method="post" th:action="@{/grupos}">
+      <h2>➕ Criar um grupo</h2>
+      <label>Nome do grupo<input name="nome" required maxlength="60" placeholder="Ex.: Família Silva · 3º ano B"></label>
+      <div class="campo-t">Tipo do grupo</div>
+      <div class="opcoes dois">
+        <label class="op"><input type="radio" name="tipo" value="FAMILIA" checked><span class="cardop"><span class="ico">🏠</span><b>Família / equipe</b><small>Todos criam tarefas e veem o progresso de todos</small></span></label>
+        <label class="op"><input type="radio" name="tipo" value="TURMA"><span class="cardop"><span class="ico">🎓</span><b>Turma</b><small>Só você cria tarefas e vê o progresso dos alunos</small></span></label>
+      </div>
+      <div class="acts"><button class="btn p">Criar grupo</button></div>
+    </form>
+    <form class="card" method="post" th:action="@{/grupos/entrar}">
+      <h2>🔑 Entrar com um código</h2>
+      <p class="mu">Peça o código de convite a quem criou o grupo.</p>
+      <label>Código de convite<input name="codigo" required maxlength="12" placeholder="ABCD2345" autocomplete="off" style="text-transform:uppercase;letter-spacing:.12em"></label>
+      <div class="acts"><button class="btn p">Entrar no grupo</button></div>
+    </form>
+  </div>
+
+  <h2 style="margin:26px 0 4px">Meus grupos</h2>
+  <p class="mu" th:if="${#lists.isEmpty(itens)}">Você ainda não participa de nenhum grupo.</p>
+  <div class="card gcard" th:each="i : ${itens}">
+    <div>
+      <b style="font-size:16px" th:text="${i.grupo().tipoIcone() + ' ' + i.grupo().nome()}"></b>
+      <div class="tags">
+        <span class="chip" th:text="${i.grupo().tipoRotulo()}"></span>
+        <span class="chip" th:text="${i.membros() + (i.membros() == 1 ? ' pessoa' : ' pessoas')}"></span>
+        <span class="chip grupo" th:if="${i.dono()}">Você é o responsável</span>
+      </div>
+    </div>
+    <a class="btn p" th:href="@{/grupos/{id}(id=${i.grupo().id()})}">Abrir</a>
+  </div>
+</div>
+</main>
+<div th:replace="~{fragmentos :: rodape}"></div>
+</body></html>

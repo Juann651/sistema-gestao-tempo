@@ -17,6 +17,9 @@ public enum Periodo {
     public String getCodigo() { return codigo; }
     public String getRotulo() { return rotulo; }
     public String getCor() { return cor; }
+    public String getIcone() {
+        return switch (this) { case MADRUGADA -> "🌙"; case MANHA -> "☀️"; case TARDE -> "🌤️"; case NOITE -> "🌆"; };
+    }
     /** Capacidade padrão em minutos. */
     public int getCapacidadePadrao() { return capacidadePadrao; }
     public int getCapacidadePadraoSeg() { return capacidadePadrao * 60; }
