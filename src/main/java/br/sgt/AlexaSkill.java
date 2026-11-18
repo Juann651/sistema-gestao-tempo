@@ -81,7 +81,7 @@ public class AlexaSkill {
                 default -> JSON.createObjectNode().put("version", "1.0").set("response", JSON.createObjectNode());
             };
         } catch (ErroSupabase e) {
-            r = e.status == 401 ? vincular() : fala(e.getMessage(), null, true, null);
+            r = e.status == 401 ? vincular() : fala(e.getMessage(), null, false, null);
         } catch (Exception e) {
             LOG.error("Falha ao atender a Alexa", e);
             r = fala("Tive um problema agora. Tente de novo em instantes.", null, true, null);
@@ -117,7 +117,8 @@ public class AlexaSkill {
         if (texto.isEmpty()) return fala("Não entendi o tempo. Diga por exemplo: quarenta e cinco minutos.", null, false, m.pegar());
 
         Assistente.Resposta resp = assistente.responder(sb.porToken(token), m, texto);
-        return fala(resp.texto(), resp.texto(), !resp.aguarda(), m.pegar());
+        // a conversa continua aberta: assim dá para dar vários comandos seguidos sem dizer "abrir meu s g t" de novo
+        return fala(resp.texto(), resp.texto(), false, m.pegar());
     }
 
     /** Converte a intenção da Alexa na mesma frase que o usuário digitaria no site. null = intenção desconhecida; "" = tempo inválido. */
@@ -166,7 +167,7 @@ public class AlexaSkill {
         resp.putObject("outputSpeech").put("type", "PlainText").put("text", voz);
         if (cartao != null) resp.putObject("card").put("type", "Simple").put("title", "SGT").put("content", cartao);
         if (!encerra) resp.putObject("reprompt").putObject("outputSpeech").put("type", "PlainText")
-                .put("text", pendente != null ? voz : "Pode falar. O que você quer fazer?");
+                .put("text", pendente != null ? voz : "Quer fazer mais alguma coisa? Pode falar.");
         resp.put("shouldEndSession", encerra);
         return r;
     }
