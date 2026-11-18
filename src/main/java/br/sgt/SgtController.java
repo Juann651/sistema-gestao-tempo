@@ -20,8 +20,9 @@ import org.springframework.web.bind.annotation.*;
 public class SgtController {
     private final SupabaseService sb;
     private final TarefaService svc;
+    private final Contexto ctx;
 
-    public SgtController(SupabaseService sb, TarefaService svc) { this.sb = sb; this.svc = svc; }
+    public SgtController(SupabaseService sb, TarefaService svc, Contexto ctx) { this.sb = sb; this.svc = svc; this.ctx = ctx; }
 
     /** Uma coluna da agenda. Tempos em SEGUNDOS. */
     public record Coluna(Periodo periodo, List<Tarefa> tarefas, int usado, int capacidade) {
@@ -41,27 +42,13 @@ public class SgtController {
         public String gastoFmt() { return Tempo.legivel(gastoSeg); }
     }
 
-    @ModelAttribute
-    void aviso(HttpSession s, Model m) {
-        Object a = s.getAttribute("aviso");
-        if (a != null) { m.addAttribute("aviso", a); s.removeAttribute("aviso"); }
-    }
-
-    @ExceptionHandler(ErroSupabase.class)
-    String erro(ErroSupabase e, HttpServletRequest rq, HttpSession s, Model m) {
-        if (e.status == 401) { s.removeAttribute("sessao"); s.setAttribute("aviso", e.getMessage()); return "redirect:/login"; }
-        if (rq.getMethod().equals("GET")) { m.addAttribute("mensagem", e.getMessage()); return "erro"; }
-        s.setAttribute("aviso", e.getMessage());
-        return "redirect:/";
-    }
-
     // ---------- conta ----------
     @GetMapping("/login")
     String login() { return "login"; }
 
     @PostMapping("/login")
     String entrar(@RequestParam String email, @RequestParam String senha, HttpSession s, Model m) {
-        try { s.setAttribute("sessao", sb.entrar(email.trim(), senha)); return "redirect:/"; }
+        try { s.setAttribute("sessao", sb.entrar(email.trim(), senha)); s.removeAttribute("papel"); return "redirect:/"; }
         catch (ErroSupabase e) { m.addAttribute("erro", e.getMessage()); return "login"; }
     }
 
@@ -79,17 +66,7 @@ public class SgtController {
     String sair(HttpSession s) { s.invalidate(); return "redirect:/login"; }
 
     // ---------- contexto comum às telas ----------
-    /** Disponibiliza o estado do modo foco (tarefa em andamento, bloqueio, relógio do servidor) para as páginas. */
-    private boolean contexto(Model m, List<Tarefa> ts, String pagina) {
-        long agora = System.currentTimeMillis();
-        Tarefa ativa = TarefaService.emAndamento(ts);
-        boolean bloqueado = TarefaService.travadora(ts, agora) != null;
-        m.addAttribute("ativa", ativa);
-        m.addAttribute("bloqueado", bloqueado);
-        m.addAttribute("agora", agora);
-        m.addAttribute("pagina", pagina);
-        return bloqueado;
-    }
+    private boolean contexto(Model m, HttpSession s, List<Tarefa> ts, String pagina) { return ctx.preparar(m, s, ts, pagina); }
 
     private static String volta(String v) {
         return "/agenda".equals(v) ? "redirect:/agenda" : "/resumo".equals(v) ? "redirect:/resumo" : "redirect:/";
@@ -98,18 +75,25 @@ public class SgtController {
     // ---------- tarefas ----------
     @GetMapping("/")
     String tarefas(@RequestParam(required = false) String editar, HttpSession s, Model m) {
-        List<Tarefa> ts = new ArrayList<>(svc.listar(sb.web(s)));
-        boolean bloqueado = contexto(m, ts, "tarefas");
-        ts.sort(Comparator.comparing(Tarefa::concluida).thenComparing(Comparator.comparingInt(Tarefa::score).reversed()));
+        List<Tarefa> todas = new ArrayList<>(svc.listar(sb.web(s)));
+        boolean bloqueado = contexto(m, s, todas, "tarefas");
+        LocalDate hoje = Tempo.hoje();
+        Comparator<Tarefa> ordem = Comparator.comparing(Tarefa::concluida).thenComparing(Comparator.comparingInt(Tarefa::score).reversed());
+        List<Tarefa> ts = new ArrayList<>(TarefaService.doDia(todas, hoje));
+        ts.sort(ordem);
         long feitas = ts.stream().filter(Tarefa::concluida).count();
         m.addAttribute("tarefas", ts);
         m.addAttribute("total", ts.size());
         m.addAttribute("feitas", feitas);
         m.addAttribute("pendentes", ts.size() - feitas);
         m.addAttribute("esforco", Tempo.legivel(ts.stream().filter(Tarefa::concluida).mapToLong(Tarefa::tempoGasto).sum()));
+        m.addAttribute("anteriores", TarefaService.pendentesAnteriores(todas, hoje).stream().sorted(Comparator.comparing(Tarefa::dia).reversed()).toList());
+        m.addAttribute("proximos", todas.stream().filter(t -> t.dia().isAfter(hoje)).sorted(Comparator.comparing(Tarefa::dia)).toList());
+        m.addAttribute("hojeIso", hoje.toString());
+        m.addAttribute("dataHoje", Tempo.diaSemana(hoje) + ", " + Tempo.data(hoje));
         m.addAttribute("niveis", Nivel.values());
         m.addAttribute("periodos", Periodo.values());
-        m.addAttribute("edit", editar == null || bloqueado ? null : ts.stream().filter(t -> t.id().equals(editar)).findFirst().orElse(null));
+        m.addAttribute("edit", editar == null || bloqueado ? null : todas.stream().filter(t -> t.id().equals(editar)).findFirst().orElse(null));
         return "tarefas";
     }
 
@@ -117,10 +101,15 @@ public class SgtController {
     String salvar(@RequestParam(required = false) String id, @RequestParam String nome,
                   @RequestParam(defaultValue = "") String descricao, @RequestParam int prioridade,
                   @RequestParam int urgencia, @RequestParam int complexidade, @RequestParam int duracao,
-                  @RequestParam String periodo, HttpSession s) {
+                  @RequestParam String periodo, @RequestParam(required = false) String dia, HttpSession s) {
+        boolean novo = id == null || id.isBlank();
+        LocalDate quando = null;   // null = hoje (padrão do banco). Ao editar, o dia da tarefa não muda.
+        if (novo && dia != null && !dia.isBlank()) {
+            try { quando = LocalDate.parse(dia); } catch (Exception e) { throw new ErroSupabase(400, "Data inválida."); }
+        }
         Map<String, Object> d = TarefaService.dados(nome, descricao, Nivel.de(prioridade), Nivel.de(urgencia),
-                Nivel.de(complexidade), duracao, Periodo.de(periodo));
-        if (id == null || id.isBlank()) svc.criar(sb.web(s), d); else svc.editar(sb.web(s), id, d);
+                Nivel.de(complexidade), duracao, Periodo.de(periodo), quando);
+        if (novo) svc.criar(sb.web(s), d); else svc.editar(sb.web(s), id, d);
         return "redirect:/";
     }
 
@@ -131,6 +120,7 @@ public class SgtController {
                     @RequestParam(required = false) String volta, HttpSession s) {
         if (horas < 0 || minutos < 0 || segundos < 0) throw new ErroSupabase(400, "O tempo gasto não pode ser negativo.");
         svc.concluir(sb.web(s), id, (int) Math.min(Integer.MAX_VALUE, horas * 3600L + minutos * 60L + segundos));
+        ctx.avisarConquistas(s);
         return volta(volta);
     }
 
@@ -142,13 +132,24 @@ public class SgtController {
 
     @PostMapping("/tarefas/{id}/reabrir")
     String reabrir(@PathVariable String id, @RequestParam(required = false) String volta, HttpSession s) {
+        ctx.fecharDias(s);
         svc.reabrir(sb.web(s), id);
         return volta(volta);
     }
 
     @PostMapping("/tarefas/{id}/remover")
     String remover(@PathVariable String id, HttpSession s) {
+        ctx.fecharDias(s);   // fecha os dias vencidos antes, para remover tarefas não "apagar" um dia já encerrado
         svc.remover(sb.web(s), id);
+        return "redirect:/";
+    }
+
+    /** Tarefa pendente de um dia anterior: cria uma cópia para hoje. Nada é movido sozinho. */
+    @PostMapping("/tarefas/{id}/replanejar")
+    String replanejar(@PathVariable String id, HttpSession s) {
+        ctx.fecharDias(s);
+        Tarefa t = svc.replanejar(sb.web(s), id);
+        s.setAttribute("aviso", "«" + t.nome() + "» foi replanejada para hoje.");
         return "redirect:/";
     }
 
@@ -172,8 +173,8 @@ public class SgtController {
     @GetMapping("/agenda")
     String agenda(HttpSession s, Model m) {
         List<Tarefa> ts = svc.listar(sb.web(s));
-        contexto(m, ts, "agenda");
-        m.addAttribute("colunas", montarColunas(ts, svc.capacidades(sb.web(s))));
+        contexto(m, s, ts, "agenda");
+        m.addAttribute("colunas", montarColunas(TarefaService.doDia(ts, Tempo.hoje()), svc.capacidades(sb.web(s))));
         m.addAttribute("periodos", Periodo.values());
         return "agenda";
     }
@@ -182,20 +183,21 @@ public class SgtController {
     @GetMapping("/resumo")
     String resumo(HttpSession s, Model m) {
         List<Tarefa> ts = svc.listar(sb.web(s));
-        contexto(m, ts, "resumo");
-        List<Coluna> colunas = montarColunas(ts, svc.capacidades(sb.web(s)));
-        long pendentes = ts.stream().filter(t -> !t.concluida()).count();
+        contexto(m, s, ts, "resumo");
+        List<Tarefa> hoje = TarefaService.doDia(ts, Tempo.hoje());
+        List<Coluna> colunas = montarColunas(hoje, svc.capacidades(sb.web(s)));
+        long pendentes = hoje.stream().filter(t -> !t.concluida()).count();
         String data = LocalDate.now(ZoneId.of("America/Sao_Paulo"))
                 .format(DateTimeFormatter.ofPattern("EEEE, d 'de' MMMM", Locale.forLanguageTag("pt-BR")));
         m.addAttribute("data", Character.toUpperCase(data.charAt(0)) + data.substring(1));
         m.addAttribute("pendentes", pendentes);
-        m.addAttribute("concluidas", ts.size() - pendentes);
+        m.addAttribute("concluidas", hoje.size() - pendentes);
         m.addAttribute("usado", Tempo.legivel(colunas.stream().mapToInt(Coluna::usado).sum()));
         m.addAttribute("capacidade", Tempo.legivel(colunas.stream().mapToInt(Coluna::capacidade).sum()));
         int excesso = colunas.stream().mapToInt(Coluna::excesso).sum();
         m.addAttribute("excesso", excesso);
         m.addAttribute("excessoFmt", Tempo.legivel(excesso));
-        m.addAttribute("proximas", ts.stream().filter(t -> !t.concluida())
+        m.addAttribute("proximas", hoje.stream().filter(t -> !t.concluida())
                 .sorted(Comparator.comparingInt(Tarefa::score).reversed()).limit(3).toList());
         m.addAttribute("colunas", colunas);
         // esforço gasto: total e por usuário (quem concluiu)

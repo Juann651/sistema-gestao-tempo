@@ -1,6 +1,7 @@
 package br.sgt;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -52,6 +53,28 @@ public class TarefaService {
         return d;
     }
 
+    /** Igual ao método acima, mas escolhendo o dia da tarefa (null = hoje, que é o padrão do banco). */
+    public static Map<String, Object> dados(String nome, String descricao, Nivel prioridade, Nivel urgencia,
+                                            Nivel complexidade, int duracaoMin, Periodo turno, LocalDate dia) {
+        Map<String, Object> d = dados(nome, descricao, prioridade, urgencia, complexidade, duracaoMin, turno);
+        if (dia != null) {
+            if (dia.isBefore(Tempo.hoje())) throw new ErroSupabase(400, "Não é possível planejar uma tarefa para um dia que já passou.");
+            if (dia.isAfter(Tempo.hoje().plusDays(365))) throw new ErroSupabase(400, "Escolha uma data dentro dos próximos 12 meses.");
+            d.put("data", dia.toString());
+        }
+        return d;
+    }
+
+    /** Tarefas planejadas para um dia. */
+    public static List<Tarefa> doDia(List<Tarefa> ts, LocalDate dia) {
+        return ts.stream().filter(t -> t.dia().equals(dia)).toList();
+    }
+
+    /** Tarefas de dias anteriores que não foram concluídas nem replanejadas: o usuário decide o que fazer com elas. */
+    public static List<Tarefa> pendentesAnteriores(List<Tarefa> ts, LocalDate hoje) {
+        return ts.stream().filter(t -> t.dia().isBefore(hoje) && !t.concluida() && !t.replanejada()).toList();
+    }
+
     // ---------- bloqueio ----------
     /** Lança erro se o modo foco estiver ativo (usado antes de qualquer ação que não seja concluir a tarefa em andamento). */
     public void exigirLivre(List<Tarefa> ts) {
@@ -97,6 +120,26 @@ public class TarefaService {
         Tarefa t = achar(ts, id);
         exigirLivre(ts);
         s.chamar(x -> { sb.remover(x, id); return null; });
+        return t;
+    }
+
+    /**
+     * Replaneja uma tarefa pendente de um dia anterior: cria uma cópia para hoje e marca a original como replanejada.
+     * A original continua no histórico daquele dia (o resultado dele não muda); nada é movido automaticamente.
+     */
+    public Tarefa replanejar(Acesso s, String id) {
+        List<Tarefa> ts = listar(s);
+        Tarefa t = achar(ts, id);
+        exigirLivre(ts);
+        if (t.concluida()) throw new ErroSupabase(400, "«" + t.nome() + "» já está concluída.");
+        if (t.replanejada()) throw new ErroSupabase(400, "«" + t.nome() + "» já foi replanejada.");
+        if (!t.dia().isBefore(Tempo.hoje())) throw new ErroSupabase(400, "Só tarefas de dias anteriores podem ser replanejadas.");
+        gravar(s, null, dados(t.nome(), t.descricao(), Nivel.de(t.prioridade()), Nivel.de(t.urgencia()),
+                Nivel.de(t.complexidade()), t.duracao(), t.turno(), Tempo.hoje()));
+        Map<String, Object> d = new HashMap<>();
+        d.put("replanejada_em", Instant.now().toString());
+        d.put("iniciada_em", null);   // uma tarefa antiga "em andamento" não pode continuar travando as outras
+        gravar(s, id, d);
         return t;
     }
 

@@ -71,3 +71,29 @@ select:disabled,input:disabled{opacity:.55;cursor:not-allowed}
 .cap>span{flex-basis:100%}
 .cap input{width:48px}
 .cap .btn{flex-basis:100%;margin:6px 0 0;text-align:center}
+
+/* ---- consistência, conquistas, admin ---- */
+.dir{display:flex;gap:10px;align-items:center}
+.chama-top{background:rgba(255,255,255,.2);border-radius:99px;padding:5px 12px;font-weight:700;color:#fff;text-decoration:none}
+.subnav{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+.subnav a{padding:7px 16px;border-radius:99px;background:#fff;border:1px solid var(--bd);color:var(--tx);font-weight:600;text-decoration:none}
+.subnav a.on{background:var(--pri);border-color:var(--pri);color:#fff}
+.chama{font-size:44px;font-weight:800;color:#ea580c;text-align:center;line-height:1.2;margin:6px 0}
+.semana{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;text-align:center}
+.dia{padding:8px 2px;border-radius:12px;background:#f9fafb;border:1px solid #eef0f3;font-size:11px;display:flex;flex-direction:column;gap:2px}
+.dia .ic{font-size:20px;line-height:1.3}
+.dia.ganhou,.dia.ganhando{background:#fff7ed;border-color:#fdba74}
+.dia.perdeu{background:#fef2f2;border-color:#fca5a5}
+.dia.protegido{background:#eff6ff;border-color:#93c5fd}
+.dia.descanso{background:#f0f9ff;border-color:#bae6fd}
+.dia.hoje{border-color:var(--pri)}
+.dia.futuro,.dia.vazio{opacity:.55}
+.pill.ganhou{background:#dcfce7;color:#15803d}.pill.perdeu{background:#fee2e2;color:#b91c1c}
+.pill.neutro{background:#e0f2fe;color:#0369a1}.pill.protegido{background:#dbeafe;color:#1d4ed8}
+.conq{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px;margin-top:12px}
+.conq .c{border:1px solid var(--bd);border-radius:14px;padding:14px;background:#fff;text-align:center}
+.conq .c.off{background:#f9fafb}.conq .ic{font-size:32px}
+table.tb{width:100%;border-collapse:collapse}
+.tb th,.tb td{text-align:left;padding:8px;border-bottom:1px solid #f1f5f9;font-size:13px;vertical-align:middle}
+.tb th{color:var(--mu);font-size:12px}
+@media(max-width:520px){.semana{gap:3px}.dia{font-size:10px}}

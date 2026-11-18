@@ -6,6 +6,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpSession;
 import java.io.InputStream;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.Set;
 import java.util.Base64;
 import java.util.EnumMap;
 import java.util.List;
@@ -26,12 +31,21 @@ public class SupabaseService {
 
     private static final ObjectMapper JSON = new ObjectMapper();
     private final RestClient http = RestClient.create();
-    private final String url, key;
+    private final String url, key, serviceKey;
 
-    public SupabaseService(@Value("${supabase.url}") String url, @Value("${supabase.key}") String key) {
+    /**
+     * serviceKey = chave "service_role" do Supabase. Fica SÓ no servidor (variável SUPABASE_SERVICE_KEY), nunca vai
+     * para o navegador. Com ela o servidor grava a consistência, as conquistas e os papéis, que o usuário comum
+     * não pode alterar. Vazia = esses recursos ficam desligados e o resto do SGT funciona normalmente.
+     */
+    public SupabaseService(@Value("${supabase.url}") String url, @Value("${supabase.key}") String key,
+                           @Value("${supabase.service-key:}") String serviceKey) {
         this.url = url.trim().replaceAll("/+$", "");
         this.key = key.trim();
+        this.serviceKey = serviceKey == null ? "" : serviceKey.trim();
     }
+
+    public boolean temServico() { return !serviceKey.isEmpty(); }
 
     // ---------- login ----------
     public Sessao entrar(String email, String senha) {
@@ -143,7 +157,135 @@ public class SupabaseService {
                 Map.of("user_id", s.userId(), "periodo", p.getCodigo(), "minutos", segundos / 60, "segundos", segundos));
     }
 
+    // ---------- perfis e papéis (USER / ADMIN) ----------
+    /** Perfil de quem está logado (o próprio usuário consegue ler o seu, pela regra RLS). */
+    public Perfil perfil(Sessao s) {
+        JsonNode n = enviar(req(HttpMethod.GET, "/rest/v1/perfis?select=*&id=eq." + id(s.userId()), s.access()), null);
+        List<Perfil> l = n == null ? List.of() : JSON.convertValue(n, new TypeReference<List<Perfil>>() { });
+        return l.isEmpty() ? null : l.get(0);
+    }
+
+    public List<Perfil> perfis() {
+        JsonNode n = servico(HttpMethod.GET, "/rest/v1/perfis?select=*&order=criado_em", null, null);
+        return n == null ? List.of() : JSON.convertValue(n, new TypeReference<List<Perfil>>() { });
+    }
+
+    public void definirPapel(String userId, String papel) {
+        servico(HttpMethod.PATCH, "/rest/v1/perfis?id=eq." + id(userId), Map.of("role", papel), null);
+    }
+
+    // ---------- configurações globais (regras da consistência) ----------
+    public Map<String, String> configuracoes() {
+        Map<String, String> m = new LinkedHashMap<>();
+        JsonNode n = servico(HttpMethod.GET, "/rest/v1/configuracoes?select=chave,valor", null, null);
+        if (n != null) n.forEach(x -> m.put(x.get("chave").asText(), x.get("valor").asText()));
+        return m;
+    }
+
+    public void salvarConfiguracao(String chave, String valor) {
+        servico(HttpMethod.POST, "/rest/v1/configuracoes?on_conflict=chave", Map.of("chave", chave, "valor", valor),
+                "resolution=merge-duplicates");
+    }
+
+    // ---------- conquistas (catálogo global) ----------
+    public List<Conquista> conquistas() {
+        JsonNode n = servico(HttpMethod.GET, "/rest/v1/conquistas?select=*&order=tipo,requisito", null, null);
+        return n == null ? List.of() : JSON.convertValue(n, new TypeReference<List<Conquista>>() { });
+    }
+
+    /** id vazio = criar; com id = atualizar só os campos enviados. Nunca apaga desbloqueios de usuários. */
+    public void salvarConquista(String id, Map<String, Object> dados) {
+        if (id == null || id.isBlank()) servico(HttpMethod.POST, "/rest/v1/conquistas", dados, null);
+        else servico(HttpMethod.PATCH, "/rest/v1/conquistas?id=eq." + id(id), dados, null);
+    }
+
+    /** conquista_id -> data/hora do desbloqueio, só do usuário informado. */
+    public Map<String, String> conquistasDoUsuario(String userId) {
+        Map<String, String> m = new LinkedHashMap<>();
+        JsonNode n = servico(HttpMethod.GET, "/rest/v1/conquistas_usuario?select=conquista_id,desbloqueada_em&user_id=eq." + id(userId), null, null);
+        if (n != null) n.forEach(x -> m.put(x.get("conquista_id").asText(), x.path("desbloqueada_em").asText("")));
+        return m;
+    }
+
+    public void desbloquear(String userId, String conquistaId) {
+        servico(HttpMethod.POST, "/rest/v1/conquistas_usuario?on_conflict=user_id,conquista_id",
+                Map.of("user_id", id(userId), "conquista_id", id(conquistaId)), "resolution=ignore-duplicates");
+    }
+
+    /** conquista_id -> quantos usuários já desbloquearam (para o painel do administrador). */
+    public Map<String, Integer> desbloqueiosPorConquista() {
+        Map<String, Integer> m = new LinkedHashMap<>();
+        JsonNode n = servico(HttpMethod.GET, "/rest/v1/conquistas_usuario?select=conquista_id", null, null);
+        if (n != null) n.forEach(x -> m.merge(x.get("conquista_id").asText(), 1, Integer::sum));
+        return m;
+    }
+
+    // ---------- sequência, dias fechados e descanso ----------
+    public Sequencia sequencia(String userId) {
+        JsonNode n = servico(HttpMethod.GET, "/rest/v1/sequencias?select=*&user_id=eq." + id(userId), null, null);
+        List<Sequencia> l = n == null ? List.of() : JSON.convertValue(n, new TypeReference<List<Sequencia>>() { });
+        return l.isEmpty() ? null : l.get(0);
+    }
+
+    public List<Sequencia> sequencias() {
+        JsonNode n = servico(HttpMethod.GET, "/rest/v1/sequencias?select=*", null, null);
+        return n == null ? List.of() : JSON.convertValue(n, new TypeReference<List<Sequencia>>() { });
+    }
+
+    public void salvarSequencia(Sequencia q) {
+        servico(HttpMethod.POST, "/rest/v1/sequencias?on_conflict=user_id", q.paraBanco(), "resolution=merge-duplicates");
+    }
+
+    public void salvarRegistros(List<Map<String, Object>> registros) {
+        if (registros.isEmpty()) return;
+        servico(HttpMethod.POST, "/rest/v1/registros_dia?on_conflict=user_id,data", registros, "resolution=merge-duplicates");
+    }
+
+    /** Dias já encerrados do usuário, do mais novo para o mais antigo. desde = null traz tudo (até 2000 dias). */
+    public List<RegistroDia> registros(String userId, LocalDate desde) {
+        String filtro = desde == null ? "" : "&data=gte." + desde;
+        JsonNode n = servico(HttpMethod.GET, "/rest/v1/registros_dia?select=*&user_id=eq." + id(userId) + filtro + "&order=data.desc&limit=2000", null, null);
+        return n == null ? List.of() : JSON.convertValue(n, new TypeReference<List<RegistroDia>>() { });
+    }
+
+    public Set<LocalDate> diasDescanso(String userId) {
+        Set<LocalDate> s = new HashSet<>();
+        JsonNode n = servico(HttpMethod.GET, "/rest/v1/dias_descanso?select=data&user_id=eq." + id(userId), null, null);
+        if (n != null) n.forEach(x -> s.add(LocalDate.parse(x.get("data").asText())));
+        return s;
+    }
+
+    public void marcarDescanso(String userId, LocalDate dia) {
+        servico(HttpMethod.POST, "/rest/v1/dias_descanso?on_conflict=user_id,data",
+                Map.of("user_id", id(userId), "data", dia.toString()), "resolution=ignore-duplicates");
+    }
+
+    public void removerDescanso(String userId, LocalDate dia) {
+        servico(HttpMethod.DELETE, "/rest/v1/dias_descanso?user_id=eq." + id(userId) + "&data=eq." + dia, null, null);
+    }
+
     // ---------- infraestrutura ----------
+    private static String id(String valor) {
+        try { return UUID.fromString(valor).toString(); } catch (Exception e) { throw new ErroSupabase(400, "Identificador inválido."); }
+    }
+
+    /** Chamada com a chave de serviço (só o servidor tem). Um 401/403 aqui é problema de configuração, não do usuário. */
+    private JsonNode servico(HttpMethod m, String caminho, Object corpo, String prefer) {
+        if (serviceKey.isEmpty()) throw new ErroSupabase(503, "Recurso indisponível: configure SUPABASE_SERVICE_KEY no servidor.");
+        try {
+            RestClient.RequestBodySpec r = http.method(m).uri(url + caminho)
+                    .header("apikey", serviceKey)
+                    .header("Authorization", "Bearer " + serviceKey)
+                    .contentType(MediaType.APPLICATION_JSON);
+            if (prefer != null) r.header("Prefer", prefer);
+            return enviar(r, corpo);
+        } catch (ErroSupabase e) {
+            if (e.status == 401 || e.status == 403)
+                throw new ErroSupabase(502, "O servidor não conseguiu usar a chave de serviço do Supabase. Confira SUPABASE_SERVICE_KEY.");
+            throw e;
+        }
+    }
+
     private static String uuid(String id) {
         try { return UUID.fromString(id).toString(); } catch (IllegalArgumentException e) { throw new ErroSupabase(400, "Tarefa inválida."); }
     }

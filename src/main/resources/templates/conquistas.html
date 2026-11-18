@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>SGT · Conquistas</title><link rel="stylesheet" th:href="@{/style.css}"></head>
+<body th:attr="data-agora=${agora}">
+<header th:replace="~{fragmentos :: topo(${pagina})}"></header>
+<main>
+<div th:replace="~{fragmentos :: aviso}"></div>
+<div th:replace="~{fragmentos :: faixaFoco}"></div>
+<nav th:replace="~{fragmentos :: subnav(${sub})}"></nav>
+<div class="aviso" th:if="${!ativo}">As conquistas estão desligadas neste servidor (falta configurar a chave de serviço do Supabase).</div>
+<div class="aviso" th:if="${falha != null}" th:text="${falha}"></div>
+<div th:if="${itens != null}">
+  <div class="ph" style="margin-bottom:12px"><h2>Conquistas</h2><span class="pill n1" th:text="${desbloqueadas + ' de ' + #lists.size(itens) + ' desbloqueadas'}"></span></div>
+  <p class="mu">As conquistas são iguais para todos, mas o progresso é só seu: ninguém vê as conquistas de outra pessoa. Conquistas desbloqueadas ficam com você para sempre.</p>
+  <div class="conq">
+    <div class="c" th:each="v : ${itens}" th:classappend="${!v.desbloqueada()} ? 'off'">
+      <div class="ic" th:text="${v.desbloqueada() ? v.conquista().icone() : '🔒'}"></div>
+      <b th:text="${v.conquista().nome()}"></b>
+      <div class="mu" th:text="${v.conquista().descricao().isEmpty() ? v.conquista().regra() : v.conquista().descricao()}"></div>
+      <div th:if="${v.desbloqueada()}"><span class="pill n1" th:text="${'Desbloqueada em ' + v.quando()}"></span></div>
+      <div th:if="${!v.desbloqueada()}">
+        <div class="bar"><i th:style="${'width:' + v.percentual() + '%;background:#6366f1'}"></i></div>
+        <span class="mu" th:text="${v.atual() + ' de ' + v.conquista().regra()}"></span>
+      </div>
+    </div>
+  </div>
+</div>
+</main>
+<div th:replace="~{fragmentos :: rodape}"></div>
+</body></html>

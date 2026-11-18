@@ -3,6 +3,7 @@ package br.sgt;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 
 /**
@@ -16,7 +17,26 @@ public record Tarefa(String id, String nome, String descricao, int prioridade, i
                      @JsonProperty("iniciada_em") String iniciadaEm,
                      @JsonProperty("concluida_em") String concluidaEm,
                      @JsonProperty("concluida_por") String concluidaPor,
-                     String email) {
+                     String email,
+                     String data,
+                     @JsonProperty("replanejada_em") String replanejadaEm) {
+    // ---------- dia planejado ----------
+    /** Dia (fuso de Brasília) para o qual a tarefa foi planejada. Sem valor no banco = hoje. */
+    public LocalDate dia() {
+        try { return LocalDate.parse(data); } catch (Exception e) { return Tempo.hoje(); }
+    }
+    /** True se a tarefa não foi feita no dia e o usuário já a replanejou (existe uma cópia em outro dia). */
+    public boolean replanejada() { return replanejadaEm != null && !replanejadaEm.isBlank(); }
+    /** Concluída até o limite? Usada ao fechar um dia: concluir depois da meia-noite não conta para aquele dia. */
+    public boolean feitaAte(Instant limite) {
+        if (!concluida) return false;
+        if (concluidaEm == null || concluidaEm.isBlank()) return true;
+        try { return OffsetDateTime.parse(concluidaEm).toInstant().isBefore(limite); }
+        catch (Exception e) {
+            try { return Instant.parse(concluidaEm).isBefore(limite); } catch (Exception e2) { return true; }
+        }
+    }
+
     public int score() { return prioridade * 2 + urgencia * 3; }
     public String scoreCss() { int s = score(); return s >= 13 ? "n3" : s >= 9 ? "n2" : "n1"; }
     public Periodo turno() { return Periodo.de(periodo); }

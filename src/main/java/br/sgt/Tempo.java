@@ -1,8 +1,25 @@
 package br.sgt;
 
-/** Formatação de tempo (sempre em segundos) para telas e mensagens. */
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.time.format.TextStyle;
+import java.util.Locale;
+
+/** Formatação de tempo (sempre em segundos) para telas e mensagens, e o "hoje" do sistema. */
 public final class Tempo {
+    /** Fuso usado para fechar os dias (meia-noite de Brasília). */
+    public static final ZoneId ZONA = ZoneId.of("America/Sao_Paulo");
+    private static final Locale PT = Locale.forLanguageTag("pt-BR");
+
     private Tempo() { }
+
+    public static LocalDate hoje() { return LocalDate.now(ZONA); }
+    public static String data(LocalDate d) { return d.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")); }
+    public static String diaSemana(LocalDate d) {
+        String s = d.getDayOfWeek().getDisplayName(TextStyle.FULL, PT);
+        return Character.toUpperCase(s.charAt(0)) + s.substring(1);
+    }
 
     /** 5405 -> "1h 30min 5s" */
     public static String legivel(long seg) {

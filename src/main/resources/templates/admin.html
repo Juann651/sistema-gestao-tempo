@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>SGT · Admin</title><link rel="stylesheet" th:href="@{/style.css}"></head>
+<body>
+<header th:replace="~{fragmentos :: topo(${pagina})}"></header>
+<main>
+<div th:replace="~{fragmentos :: aviso}"></div>
+<div class="ph" style="margin-bottom:12px"><h2>Painel administrativo</h2><span class="pill n3">ADMIN</span></div>
+<div class="aviso" th:if="${!ativo}">O painel precisa da variável <b>SUPABASE_SERVICE_KEY</b> no servidor e da seção 5 do <b>schema.sql</b> executada no Supabase.</div>
+
+<div th:if="${ativo}">
+<nav class="subnav">
+  <a th:href="@{/admin}" th:classappend="${aba == 'visao'} ? 'on'">Visão geral</a>
+  <a th:href="@{/admin(aba='usuarios')}" th:classappend="${aba == 'usuarios'} ? 'on'">Usuários</a>
+  <a th:href="@{/admin(aba='conquistas')}" th:classappend="${aba == 'conquistas'} ? 'on'">Conquistas</a>
+  <a th:href="@{/admin(aba='regras')}" th:classappend="${aba == 'regras'} ? 'on'">Regras da consistência</a>
+</nav>
+
+<div class="kpis" th:if="${aba == 'visao'}">
+  <div class="card kpi"><span class="mu">USUÁRIOS CADASTRADOS</span><b th:text="${usuarios}"></b></div>
+  <div class="card kpi"><span class="mu">ADMINISTRADORES</span><b th:text="${admins}"></b></div>
+  <div class="card kpi"><span class="mu">SEQUÊNCIAS ATIVAS</span><b th:text="${ativas}"></b></div>
+  <div class="card kpi"><span class="mu">CONQUISTAS CADASTRADAS</span><b th:text="${cadastradas}"></b></div>
+  <div class="card kpi"><span class="mu">CONQUISTAS DESBLOQUEADAS</span><b th:text="${desbloqueios}"></b></div>
+</div>
+
+<div class="card" th:if="${aba == 'usuarios'}">
+  <h2>Usuários</h2>
+  <p class="mu">Só administradores alteram papéis. Você não pode alterar o seu próprio papel.</p>
+  <div style="overflow-x:auto"><table class="tb">
+    <tr><th>E-mail</th><th>Papel</th><th>Sequência</th><th>Recorde</th><th>Desde</th><th>Alterar papel</th></tr>
+    <tr th:each="l : ${linhas}">
+      <td th:text="${l.perfil().email()}"></td>
+      <td><span class="pill" th:classappend="${l.perfil().admin()} ? 'n3' : 'n1'" th:text="${l.perfil().role()}"></span></td>
+      <td th:text="${l.seq() == null ? 0 : l.seq().atual()}"></td>
+      <td th:text="${l.seq() == null ? 0 : l.seq().recorde()}"></td>
+      <td th:text="${l.perfil().criadoFmt()}"></td>
+      <td>
+        <span class="mu" th:if="${l.voce()}">(você)</span>
+        <form method="post" th:action="@{/admin/usuarios/{id}/papel(id=${l.perfil().id()})}" th:if="${!l.voce()}" class="acts" style="margin:0">
+          <input type="hidden" name="papel" th:value="${l.perfil().admin() ? 'USER' : 'ADMIN'}">
+          <button class="btn s" th:classappend="${l.perfil().admin()} ? 'd'" th:text="${l.perfil().admin() ? 'Remover admin' : 'Tornar admin'}"
+                  onclick="return confirm('Confirmar a alteração de papel?')"></button>
+        </form>
+      </td>
+    </tr>
+  </table></div>
+</div>
+
+<div th:if="${aba == 'conquistas'}">
+  <form class="card" method="post" th:action="@{/admin/conquistas}" style="margin-bottom:16px">
+    <h2 th:text="${edit != null} ? 'Editando conquista' : 'Nova conquista'">Nova conquista</h2>
+    <input type="hidden" name="id" th:value="${edit?.id()}">
+    <div class="row2">
+      <label>Nome<input name="nome" required th:value="${edit?.nome()}"></label>
+      <label>Ícone (emoji)<input name="icone" maxlength="8" th:value="${edit != null} ? ${edit.icone()} : '🏆'"></label>
+    </div>
+    <label>Descrição<input name="descricao" th:value="${edit?.descricao()}"></label>
+    <div class="row2">
+      <label>Tipo<select name="tipo"><option th:each="t : ${tipos}" th:value="${t.name()}" th:text="${t.rotulo}" th:selected="${edit != null and edit.tipo() == t.name()}"></option></select></label>
+      <label>Requisito (número)<input type="number" name="requisito" min="1" required th:value="${edit != null} ? ${edit.requisito()} : 7"></label>
+    </div>
+    <p class="mu">Editar uma conquista nunca remove desbloqueios que os usuários já tenham.</p>
+    <div class="acts"><button class="btn p">Salvar conquista</button><a class="btn" th:if="${edit != null}" th:href="@{/admin(aba='conquistas')}">Cancelar</a></div>
+  </form>
+  <div class="card">
+    <h2>Catálogo global</h2>
+    <div style="overflow-x:auto"><table class="tb">
+      <tr><th></th><th>Nome</th><th>Regra</th><th>Desbloqueios</th><th>Situação</th><th></th></tr>
+      <tr th:each="l : ${linhas}">
+        <td th:text="${l.c().icone()}"></td>
+        <td><b th:text="${l.c().nome()}"></b><div class="mu" th:text="${l.c().descricao()}"></div></td>
+        <td th:text="${l.c().regra()}"></td>
+        <td th:text="${l.desbloqueios()}"></td>
+        <td><span class="pill" th:classappend="${l.c().ativa()} ? 'n1' : 'n2'" th:text="${l.c().ativa() ? 'Ativa' : 'Desativada'}"></span></td>
+        <td><div class="acts" style="margin:0">
+          <a class="btn s" th:href="@{/admin(aba='conquistas',editar=${l.c().id()})}">Editar</a>
+          <form method="post" th:action="@{/admin/conquistas/{id}/ativa(id=${l.c().id()})}"><input type="hidden" name="ativa" th:value="${!l.c().ativa()}"><button class="btn s" th:text="${l.c().ativa() ? 'Desativar' : 'Ativar'}"></button></form>
+        </div></td>
+      </tr>
+    </table></div>
+  </div>
+</div>
+
+<form class="card" method="post" th:action="@{/admin/regras}" th:if="${aba == 'regras'}" style="max-width:560px">
+  <h2>Regras da consistência</h2>
+  <p class="mu">Valem para todos os usuários, a partir do próximo dia que for fechado. Dias já encerrados não são recalculados.</p>
+  <label>Meta para ganhar o dia (% das tarefas concluídas)<input type="number" name="limiarDia" min="1" max="100" th:value="${cfg.limiarDia()}"></label>
+  <label>Limite de “alta conclusão” (% usado em conquistas)<input type="number" name="limiarAlto" min="1" max="100" th:value="${cfg.limiarAlto()}"></label>
+  <label>Ganhar um protetor 🛡️ a cada quantos dias seguidos (0 = desligado)<input type="number" name="protetorACada" min="0" max="365" th:value="${cfg.protetorACada()}"></label>
+  <label>Máximo de protetores guardados<input type="number" name="maxProtetores" min="0" max="10" th:value="${cfg.maxProtetores()}"></label>
+  <div class="acts"><button class="btn p">Salvar regras</button></div>
+</form>
+</div>
+</main>
+</body></html>

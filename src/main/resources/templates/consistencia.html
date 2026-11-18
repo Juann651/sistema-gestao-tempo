@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>SGT · Consistência</title><link rel="stylesheet" th:href="@{/style.css}"></head>
+<body th:attr="data-agora=${agora}">
+<header th:replace="~{fragmentos :: topo(${pagina})}"></header>
+<main>
+<div th:replace="~{fragmentos :: aviso}"></div>
+<div th:replace="~{fragmentos :: faixaFoco}"></div>
+<nav th:replace="~{fragmentos :: subnav(${sub})}"></nav>
+
+<div class="aviso" th:if="${!ativo}">A consistência está desligada neste servidor. Quem administra o SGT precisa configurar a variável <b>SUPABASE_SERVICE_KEY</b> e executar a seção 5 do <b>schema.sql</b>.</div>
+<div class="aviso" th:if="${falha != null}" th:text="${falha}"></div>
+
+<div th:if="${painel != null}">
+  <div class="cols resumo">
+    <div class="card">
+      <div class="ph"><h2>Minha consistência</h2><span class="pill" th:classappend="${painel.seq().atual() > 0} ? 'n1' : 'n2'" th:text="${painel.seq().atual() > 0} ? 'Em andamento' : 'Comece hoje'"></span></div>
+      <div class="chama" th:text="${'🔥 ' + painel.seq().atual() + (painel.seq().atual() == 1 ? ' dia' : ' dias')}"></div>
+      <p class="mu" style="text-align:center" th:text="${'Sua maior sequência: ' + painel.seq().recorde() + (painel.seq().recorde() == 1 ? ' dia' : ' dias')}"></p>
+      <p class="mu" style="text-align:center" th:title="'A cada ' + ${painel.cfg().protetorACada()} + ' dias seguidos você ganha um protetor (máximo ' + ${painel.cfg().maxProtetores()} + ').'">
+        <span th:text="${'🛡️ ' + painel.seq().protetores() + (painel.seq().protetores() == 1 ? ' protetor' : ' protetores')}"></span>
+        <span th:if="${painel.cfg().protetorACada() > 0}" th:text="${' · ganhe um a cada ' + painel.cfg().protetorACada() + ' dias seguidos'}"></span>
+      </p>
+
+      <h2 style="margin-top:18px">Sua semana</h2>
+      <div class="semana">
+        <div class="dia" th:each="c : ${painel.semana()}" th:classappend="${c.estado()}">
+          <span class="mu" th:text="${c.rotulo()}"></span><span class="ic" th:text="${c.icone()}"></span><span th:text="${c.legenda()}"></span>
+        </div>
+      </div>
+
+      <div th:if="${painel.proxima() != null}" style="margin-top:18px">
+        <div class="ph"><span class="mu">Próxima conquista de sequência</span><b th:text="${painel.proxima().conquista().icone() + ' ' + painel.proxima().conquista().requisito() + ' dias'}"></b></div>
+        <div class="bar"><i th:style="${'width:' + painel.proxima().percentual() + '%;background:#f59e0b'}"></i></div>
+        <div class="mu" th:text="${'Faltam ' + painel.proxima().faltam() + (painel.proxima().faltam() == 1 ? ' dia' : ' dias') + ' para «' + painel.proxima().conquista().nome() + '»'}"></div>
+      </div>
+      <p class="mu" th:if="${painel.proxima() == null}" style="margin-top:18px">🎉 Todas as conquistas de sequência já foram desbloqueadas. Sua contagem continua!</p>
+    </div>
+
+    <div>
+      <div class="card">
+        <h2>Hoje</h2>
+        <p th:if="${painel.hojeDescanso()}">😴 Hoje é dia de descanso: ele não aumenta nem interrompe sua sequência.</p>
+        <div th:if="${!painel.hojeDescanso()}">
+          <p th:if="${painel.hoje().total() == 0}">Sem tarefas para hoje: é um <b>dia neutro</b> (não aumenta nem interrompe a sequência).</p>
+          <div th:if="${painel.hoje().total() > 0}">
+            <b th:text="${painel.hoje().feitas() + ' de ' + painel.hoje().total() + ' tarefas (' + painel.hoje().taxa() + '%)'}"></b>
+            <div class="bar"><i th:style="${'width:' + painel.hoje().taxa() + '%;background:' + (painel.hoje().meta() ? '#16a34a' : '#f59e0b')}"></i></div>
+            <p class="mu" th:if="${painel.hoje().meta()}">Meta batida! Se continuar assim até a meia-noite, você ganha o dia 🔥</p>
+            <p class="mu" th:if="${!painel.hoje().meta()}" th:text="${'Meta do dia: ' + painel.cfg().limiarDia() + '%. Faltam ' + painel.hoje().faltam() + (painel.hoje().faltam() == 1 ? ' tarefa' : ' tarefas') + ' para ganhar o dia.'}"></p>
+          </div>
+        </div>
+        <p class="mu">O dia fecha à meia-noite (horário de Brasília). Tarefas concluídas depois disso não contam para o dia anterior.</p>
+      </div>
+
+      <div class="card" style="margin-top:16px">
+        <h2>Dias de descanso</h2>
+        <p class="mu">Planeje um descanso de amanhã em diante. Dias de descanso são neutros: não quebram a sequência.</p>
+        <form method="post" th:action="@{/consistencia/descanso}" class="acts" style="margin-top:8px">
+          <input type="date" name="data" th:min="${amanha}" th:max="${limite}" th:value="${amanha}" required style="max-width:170px;margin:0">
+          <input type="hidden" name="acao" value="marcar">
+          <button class="btn p s">Marcar descanso</button>
+        </form>
+        <div class="item" th:each="d : ${painel.descansos()}">
+          <span th:text="${'😴 ' + d.fmt()}"></span>
+          <form method="post" th:action="@{/consistencia/descanso}"><input type="hidden" name="data" th:value="${d.iso()}"><input type="hidden" name="acao" value="remover"><button class="btn s">Remover</button></form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:16px" th:if="${stats != null}">
+    <h2>Estatísticas</h2>
+    <div class="kpis" style="margin:0">
+      <div class="kpi"><span class="mu">DIAS GANHOS</span><b th:text="${stats.diasGanhos()}"></b></div>
+      <div class="kpi"><span class="mu">DIAS PERDIDOS</span><b th:text="${stats.diasPerdidos()}"></b></div>
+      <div class="kpi"><span class="mu">SALVOS PELO PROTETOR</span><b th:text="${stats.diasProtegidos()}"></b></div>
+      <div class="kpi"><span class="mu">DIAS NEUTROS</span><b th:text="${stats.diasNeutros()}"></b></div>
+      <div class="kpi"><span class="mu">CONCLUSÃO MÉDIA</span><b th:text="${stats.taxaMedia() + '%'}"></b></div>
+      <div class="kpi"><span class="mu">TAREFAS CONCLUÍDAS</span><b th:text="${stats.tarefasConcluidas()}"></b></div>
+      <div class="kpi"><span class="mu">ESFORÇO TOTAL</span><b th:text="${stats.esforco()}"></b></div>
+      <div class="kpi"><span class="mu">TURNO MAIS PRODUTIVO</span><b th:text="${stats.turnoTop()}"></b></div>
+    </div>
+  </div>
+</div>
+</main>
+<div th:replace="~{fragmentos :: rodape}"></div>
+</body></html>

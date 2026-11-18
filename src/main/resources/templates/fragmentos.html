@@ -3,9 +3,14 @@
 <body>
 <header th:fragment="topo(pagina)">
   <div><h1>SGT</h1><small>Organize seu tempo com inteligência</small></div>
-  <nav><a th:href="@{/}" th:classappend="${pagina == 'tarefas'} ? 'on'">Tarefas</a><a th:href="@{/agenda}" th:classappend="${pagina == 'agenda'} ? 'on'">Agenda</a><a th:href="@{/resumo}" th:classappend="${pagina == 'resumo'} ? 'on'">Resumo</a></nav>
-  <a class="btn s" th:href="@{/sair}">Sair</a>
+  <nav><a th:href="@{/}" th:classappend="${pagina == 'tarefas'} ? 'on'">Tarefas</a><a th:href="@{/agenda}" th:classappend="${pagina == 'agenda'} ? 'on'">Agenda</a><a th:href="@{/resumo}" th:classappend="${pagina == 'resumo'} ? 'on'">Resumo</a><a th:href="@{/consistencia}" th:classappend="${pagina == 'consistencia' or pagina == 'conquistas' or pagina == 'historico'} ? 'on'">Consistência</a><a th:if="${papel == 'ADMIN'}" th:href="@{/admin}" th:classappend="${pagina == 'admin'} ? 'on'">Admin</a></nav>
+  <div class="dir"><a class="chama-top" th:if="${chama != null and chama > 0}" th:href="@{/consistencia}" th:text="${'🔥 ' + chama}" title="Sua sequência de dias"></a><a class="btn s" th:href="@{/sair}">Sair</a></div>
 </header>
+<nav th:fragment="subnav(sub)" class="subnav">
+  <a th:href="@{/consistencia}" th:classappend="${sub == 'painel'} ? 'on'">🔥 Minha consistência</a>
+  <a th:href="@{/conquistas}" th:classappend="${sub == 'conquistas'} ? 'on'">🏆 Conquistas</a>
+  <a th:href="@{/historico}" th:classappend="${sub == 'historico'} ? 'on'">🗓️ Histórico</a>
+</nav>
 <div th:fragment="aviso" class="aviso" th:if="${aviso != null}" th:text="${aviso}"></div>
 
 <!-- Faixa do modo foco: aparece em todas as telas enquanto houver tarefa em andamento -->
