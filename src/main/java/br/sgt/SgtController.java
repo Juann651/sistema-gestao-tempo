@@ -96,22 +96,28 @@ public class SgtController {
         m.addAttribute("dataHoje", Tempo.diaSemana(hoje) + ", " + Tempo.data(hoje));
         ctx.opcoes(m);
         if (todas.stream().anyMatch(Tarefa::doGrupo)) m.addAttribute("grupos", grupos.nomes(Contexto.sessao(s).userId()));
-        m.addAttribute("edit", editar == null || bloqueado ? null : todas.stream().filter(t -> t.id().equals(editar)).findFirst().orElse(null));
+        Tarefa ed = editar == null || bloqueado ? null : todas.stream().filter(t -> t.id().equals(editar)).findFirst().orElse(null);
+        m.addAttribute("edit", ed);
+        int dseg = ed != null ? ed.duracaoSeg() : 3600;   // padrão: 1 hora
+        m.addAttribute("durH", dseg / 3600);
+        m.addAttribute("durM", dseg % 3600 / 60);
+        m.addAttribute("durS", dseg % 60);
         return "tarefas";
     }
 
     @PostMapping("/tarefas")
     String salvar(@RequestParam(required = false) String id, @RequestParam String nome,
                   @RequestParam(defaultValue = "") String descricao, @RequestParam int prioridade,
-                  @RequestParam int urgencia, @RequestParam int complexidade, @RequestParam int duracao,
-                  @RequestParam String periodo, @RequestParam(required = false) String dia, HttpSession s) {
+                  @RequestParam int urgencia, @RequestParam int complexidade,
+                  @RequestParam(defaultValue = "0") int horas, @RequestParam(defaultValue = "0") int minutos,
+                  @RequestParam(defaultValue = "0") int segundos, @RequestParam String periodo, @RequestParam(required = false) String dia, HttpSession s) {
         boolean novo = id == null || id.isBlank();
         LocalDate quando = null;   // null = hoje (padrão do banco). Ao editar, o dia da tarefa não muda.
         if (novo && dia != null && !dia.isBlank()) {
             try { quando = LocalDate.parse(dia); } catch (Exception e) { throw new ErroSupabase(400, "Data inválida."); }
         }
-        Map<String, Object> d = TarefaService.dados(nome, descricao, Nivel.de(prioridade), Nivel.de(urgencia),
-                Nivel.de(complexidade), duracao, Periodo.de(periodo), quando);
+        Map<String, Object> d = TarefaService.dadosSeg(nome, descricao, Nivel.de(prioridade), Nivel.de(urgencia),
+                Nivel.de(complexidade), TarefaService.totalSeg(horas, minutos, segundos), Periodo.de(periodo), quando);
         if (novo) svc.criar(sb.web(s), d); else svc.editar(sb.web(s), id, d);
         return "redirect:/";
     }

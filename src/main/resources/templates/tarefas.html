@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>SGT · Tarefas</title><link rel="stylesheet" th:href="@{/style.css}"></head>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>SGT · Tarefas</title><link rel="icon" type="image/svg+xml" th:href="@{/logo.svg}"><link rel="stylesheet" th:href="@{/style.css}"></head>
 <body th:attr="data-agora=${agora}">
 <header th:replace="~{fragmentos :: topo(${pagina})}"></header>
 <main>
@@ -38,10 +38,13 @@
         <label class="op" th:each="p : ${periodos}"><input type="radio" name="periodo" th:value="${p.codigo}" th:checked="${edit != null ? edit.periodo() == p.codigo : p.name() == 'MANHA'}"><span class="cardop"><span class="ico" th:text="${p.icone}"></span><b th:text="${p.rotulo}"></b></span></label>
       </div>
 
-      <div class="row2">
-        <label>Duração prevista (min)<input type="number" name="duracao" min="1" required th:value="${edit != null} ? ${edit.duracao()} : 60"></label>
-        <label th:if="${edit == null}">Dia da tarefa<input type="date" name="dia" th:value="${hojeIso}" th:min="${hojeIso}"></label>
+      <div class="campo-t">Duração prevista</div>
+      <div class="hms">
+        <label>Horas<input type="number" name="horas" min="0" max="24" th:value="${durH}" inputmode="numeric"></label>
+        <label>Minutos<input type="number" name="minutos" min="0" max="59" th:value="${durM}" inputmode="numeric"></label>
+        <label>Segundos<input type="number" name="segundos" min="0" max="59" th:value="${durS}" inputmode="numeric"></label>
       </div>
+      <label th:if="${edit == null}">Dia da tarefa<input type="date" name="dia" th:value="${hojeIso}" th:min="${hojeIso}"></label>
       <div class="acts"><button class="btn p">Salvar tarefa</button><a class="btn" th:if="${edit != null}" th:href="@{/}">Cancelar</a></div>
     </fieldset>
   </form>

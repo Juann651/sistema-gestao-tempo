@@ -55,7 +55,7 @@ public class Contexto {
     }
 
     public void aplicar(Model m, Sequencia seq, List<Conquista> novas) {
-        if (seq != null) m.addAttribute("chama", seq.atual());
+        if (seq != null) { m.addAttribute("chama", seq.atual()); m.addAttribute("protetores", seq.protetores()); }
         if (novas != null && !novas.isEmpty()) {
             Object antes = m.asMap().get("aviso");
             m.addAttribute("aviso", (antes == null ? "" : antes + " ") + texto(novas));

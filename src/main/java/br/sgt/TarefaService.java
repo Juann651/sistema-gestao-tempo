@@ -65,6 +65,22 @@ public class TarefaService {
         return d;
     }
 
+    /** Soma horas + minutos + segundos (qualquer valor negativo é recusado). */
+    public static int totalSeg(int horas, int minutos, int segundos) {
+        if (horas < 0 || minutos < 0 || segundos < 0) throw new ErroSupabase(400, "Use apenas valores positivos na duração.");
+        return (int) Math.min(horas * 3600L + minutos * 60L + segundos, Integer.MAX_VALUE);
+    }
+
+    /** Como {@link #dados}, mas com a duração em SEGUNDOS (o campo em minutos continua preenchido, arredondado para cima). */
+    public static Map<String, Object> dadosSeg(String nome, String descricao, Nivel prioridade, Nivel urgencia,
+                                               Nivel complexidade, int duracaoSeg, Periodo turno, LocalDate dia) {
+        if (duracaoSeg < 1) throw new ErroSupabase(400, "A duração deve ser maior que zero.");
+        if (duracaoSeg > 86400) throw new ErroSupabase(400, "A duração máxima de uma tarefa é de 24 horas.");
+        Map<String, Object> d = dados(nome, descricao, prioridade, urgencia, complexidade, (duracaoSeg + 59) / 60, turno, dia);
+        d.put("duracao_seg", duracaoSeg);
+        return d;
+    }
+
     /** Tarefas planejadas para um dia. */
     public static List<Tarefa> doDia(List<Tarefa> ts, LocalDate dia) {
         return ts.stream().filter(t -> t.dia().equals(dia)).toList();
@@ -144,8 +160,8 @@ public class TarefaService {
             gravar(s, id, mover);
             return t;
         }
-        gravar(s, null, dados(t.nome(), t.descricao(), Nivel.de(t.prioridade()), Nivel.de(t.urgencia()),
-                Nivel.de(t.complexidade()), t.duracao(), t.turno(), Tempo.hoje()));
+        gravar(s, null, dadosSeg(t.nome(), t.descricao(), Nivel.de(t.prioridade()), Nivel.de(t.urgencia()),
+                Nivel.de(t.complexidade()), t.duracaoSeg(), t.turno(), Tempo.hoje()));
         Map<String, Object> d = new HashMap<>();
         d.put("replanejada_em", Instant.now().toString());
         d.put("iniciada_em", null);   // uma tarefa antiga "em andamento" não pode continuar travando as outras

@@ -115,13 +115,13 @@ public class Assistente {
         Nivel pr = c.prioridade != null ? c.prioridade : pad(padroes, "prioridade", Nivel.MEDIA);
         Nivel ur = c.urgencia != null ? c.urgencia : pad(padroes, "urgência", Nivel.MEDIA);
         Nivel cp = c.complexidade != null ? c.complexidade : pad(padroes, "complexidade", Nivel.MEDIA);
-        int min = 60;
-        if (c.duracaoSeg != null) min = Math.max(1, (c.duracaoSeg + 59) / 60); else padroes.add("duração");
+        int seg = 3600;
+        if (c.duracaoSeg != null) seg = Math.max(1, c.duracaoSeg); else padroes.add("duração");
         Periodo turno = c.turno;
         if (turno == null) { turno = turnoAgora(); padroes.add("turno"); }
-        svc.criar(s, TarefaService.dados(c.nome, c.descricao, pr, ur, cp, min, turno));
+        svc.criar(s, TarefaService.dadosSeg(c.nome, c.descricao, pr, ur, cp, seg, turno, null));
         String r = "Criei «" + c.nome + "»: prioridade " + pr.getRotulo() + ", urgência " + ur.getRotulo()
-                + ", complexidade " + cp.getRotulo() + ", " + Tempo.legivel(min * 60L) + ", turno " + turno.getRotulo() + ".";
+                + ", complexidade " + cp.getRotulo() + ", " + Tempo.legivel(seg) + ", turno " + turno.getRotulo() + ".";
         if (!padroes.isEmpty()) r += " (Usei o padrão em: " + String.join(", ", padroes) + ".)";
         return fez(r);
     }
@@ -174,8 +174,8 @@ public class Assistente {
         if (c.urgencia != null) { d.put("urgencia", c.urgencia.getPeso()); mudou.add("urgência → " + c.urgencia.getRotulo()); }
         if (c.complexidade != null) { d.put("complexidade", c.complexidade.getPeso()); mudou.add("complexidade → " + c.complexidade.getRotulo()); }
         if (c.duracaoSeg != null) {
-            int min = Math.max(1, (c.duracaoSeg + 59) / 60);
-            d.put("duracao", min); mudou.add("duração → " + Tempo.legivel(min * 60L));
+            int seg = Math.max(1, c.duracaoSeg);
+            d.put("duracao", (seg + 59) / 60); d.put("duracao_seg", seg); mudou.add("duração → " + Tempo.legivel(seg));
         }
         if (c.turno != null) { d.put("periodo", c.turno.getCodigo()); mudou.add("turno → " + c.turno.getRotulo()); }
         if (d.isEmpty())

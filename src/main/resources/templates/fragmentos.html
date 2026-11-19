@@ -3,7 +3,7 @@
 <body>
 <header class="topo" th:fragment="topo(pagina)">
   <div class="topo-in">
-    <a class="logo" th:href="@{/}"><span class="logo-i">⏱</span><span><b>SGT</b><small>Organize seu tempo</small></span></a>
+    <a class="logo" th:href="@{/}"><img class="logo-img" th:src="@{/logo.svg}" width="40" height="40" alt=""><span><b>SGT</b><small>Organize seu tempo</small></span></a>
     <div class="menu">
       <a th:href="@{/}" th:classappend="${pagina == 'tarefas'} ? 'on'">📝 Tarefas</a>
       <a th:href="@{/agenda}" th:classappend="${pagina == 'agenda'} ? 'on'">🗓️ Agenda</a>
@@ -57,6 +57,7 @@
     <summary aria-label="Abrir atalho da consistência"><span class="fogo">🔥</span><b th:text="${chama}"></b></summary>
     <div class="fab-painel">
       <div class="fab-topo"><b th:text="${chama + (chama == 1 ? ' dia' : ' dias')}"></b> <span class="mu">de sequência</span></div>
+      <div class="mu" th:if="${protetores != null}" th:text="${'🛡️ ' + protetores + (protetores == 1 ? ' protetor guardado' : ' protetores guardados')}" title="Um protetor salva a sua sequência automaticamente se você falhar um dia."></div>
       <div th:if="${hojeProg != null}" style="margin-top:10px">
         <div th:if="${hojeProg.total() == 0}" class="mu">Sem tarefas hoje: dia neutro (não quebra a sequência).</div>
         <div th:if="${hojeProg.total() > 0}">

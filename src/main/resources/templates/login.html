@@ -1,9 +1,10 @@
 <!DOCTYPE html>
 <html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>SGT</title><link rel="stylesheet" th:href="@{/style.css}"></head>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>SGT</title><link rel="icon" type="image/svg+xml" th:href="@{/logo.svg}"><link rel="stylesheet" th:href="@{/style.css}"></head>
 <body>
-<main class="entrada"><form class="card" method="post" th:action="@{/login}">
-  <h2>Entrar no SGT</h2>
+<main class="entrada"><div style="text-align:center;margin-bottom:18px"><img th:src="@{/logo.svg}" width="76" height="76" alt="SGT"><h1 style="margin-top:10px">SGT</h1><p class="mu" style="margin:2px 0 0">Sistema de Gestão do Tempo</p></div>
+<form class="card" method="post" th:action="@{/login}">
+  <h2>Entrar</h2>
   <div class="aviso" th:if="${erro != null}" th:text="${erro}"></div>
   <div class="aviso ok" th:if="${ok != null}" th:text="${ok}"></div>
   <label>E-mail<input type="email" name="email" required autocomplete="email"></label>

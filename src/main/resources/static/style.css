@@ -220,3 +220,18 @@ table.tb{width:100%;border-collapse:collapse}
   .topo-in{padding:10px 14px}main{padding:16px 14px 90px}.menu{order:3;width:100%;margin:0}
 }
 @media(max-width:520px){.semana{gap:3px}.dia{font-size:10px}.info3{grid-template-columns:1fr}.opcoes{gap:6px}h1{font-size:22px}}
+
+/* ---- logo ---- */
+.logo-img{width:40px;height:40px;border-radius:11px;display:block}
+
+/* ---- grupo ao vivo ---- */
+.live-dot{width:9px;height:9px;border-radius:50%;background:var(--ok);display:inline-block;animation:pisca 1.4s ease-in-out infinite}
+@keyframes pisca{0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(22,163,74,.55)}50%{opacity:.7;box-shadow:0 0 0 6px rgba(22,163,74,0)}}
+.aovivo{border-color:#bfe3cc;background:linear-gradient(180deg,#f4fbf7,#fff);margin-top:16px}
+.avivo{display:flex;align-items:center;gap:12px;padding:10px 0;border-top:1px solid #e4f0e9}
+.avivo:first-of-type{border-top:0}
+.avivo-txt{flex:1;min-width:0}
+.avatar{width:38px;height:38px;border-radius:50%;background:var(--pri-soft);color:var(--pri);display:grid;place-items:center;font-weight:800;flex:none}
+.status .cont{padding:2px 6px;font-size:11px;background:transparent}
+.status .cont::before{content:""}
+@media(prefers-reduced-motion:reduce){.live-dot{animation:none}}

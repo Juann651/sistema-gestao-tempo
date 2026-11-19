@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<!-- Pedaços do grupo que o navegador atualiza sozinho (o arquivo só é usado como fragmentos, nunca como página) -->
+<!-- ================= regiões que o navegador atualiza sozinho (sem recarregar a página) ================= -->
+<div th:fragment="vivo">
+  <div th:replace="~{:: regiaoMembros}"></div>
+  <div th:replace="~{:: regiaoAoVivo}"></div>
+  <div th:replace="~{:: regiaoTarefas}"></div>
+</div>
+
+<div th:fragment="regiaoMembros" class="membros" data-regiao="membros" th:attr="data-sig=${p.membros().hashCode()}">
+  <div class="membro" th:each="m : ${p.membros()}">
+    <span th:text="${m.nome() + (m.voce() ? ' (você)' : '') + (m.dono() ? ' · responsável' : '')}"></span>
+    <form method="post" th:if="${p.dono() and !m.dono()}" th:action="@{/grupos/{id}/membros/{u}/remover(id=${p.grupo().id()},u=${m.userId()})}" onsubmit="return confirm('Remover esta pessoa do grupo?')"><button class="btn s d" title="Remover do grupo">✕</button></form>
+  </div>
+</div>
+
+<div th:fragment="regiaoAoVivo" data-regiao="aovivo" th:attr="data-sig=${p.aoVivo().hashCode() + '-' + p.veProgresso()}">
+  <div class="card aovivo" th:if="${p.veProgresso()}">
+    <h2><span class="live-dot"></span> Ao vivo agora</h2>
+    <p class="mu" th:if="${p.aoVivo().isEmpty()}" style="margin:0">Ninguém está com o cronômetro ligado neste momento. Quando alguém clicar em ▶ Iniciar, aparece aqui na hora.</p>
+    <div class="avivo" th:each="a : ${p.aoVivo()}">
+      <span class="avatar" th:text="${a.inicial()}"></span>
+      <div class="avivo-txt"><b th:text="${a.voce() ? 'Você' : a.membro()}"></b> está fazendo <b th:text="${'«' + a.tarefa() + '»'}"></b><div class="mu" th:text="${'Tempo reservado: ' + a.previsto()}"></div></div>
+      <span class="cont grande" data-estado="rodando" th:attr="data-fim=${a.fimMs()}" title="Tempo restante">00:00:00</span>
+    </div>
+  </div>
+</div>
+
+<div th:fragment="regiaoTarefas" data-regiao="tarefas" th:attr="data-sig=${p.tarefas().hashCode()}">
+  <h2 style="margin:26px 0 0">Tarefas do grupo</h2>
+  <div class="card" th:if="${#lists.isEmpty(p.tarefas())}"><p class="mu" style="margin:0" th:text="${p.podeCriar() ? 'Ainda não há tarefas. Crie a primeira acima.' : 'Você ainda não recebeu tarefas neste grupo.'}"></p></div>
+  <div class="tcard" th:each="t : ${p.tarefas()}" th:attr="data-gtid=${t.gtid()}">
+    <div class="tc-head" data-toggle tabindex="0" role="button" aria-expanded="false">
+      <div class="tc-main">
+        <b th:text="${t.nome()}"></b>
+        <div class="tc-sub">
+          <span class="chip" th:text="${t.turno().icone + ' ' + t.turno().rotulo}"></span>
+          <span class="chip" th:text="${'📅 ' + t.dia()}"></span>
+          <span class="chip" th:text="${'⏱ ' + t.duracao()}"></span>
+        </div>
+      </div>
+      <div class="tc-lado">
+        <span class="pill" th:classappend="${t.feitas() == t.total()} ? 'ok'" th:text="${t.feitas() + ' de ' + t.total() + (p.veProgresso() ? ' concluíram' : ' concluída')}"></span>
+        <span class="tc-seta">▾</span>
+      </div>
+    </div>
+    <div class="tc-corpo">
+      <p class="mu" style="margin:0" th:if="${!t.descricao().isBlank()}" th:text="${t.descricao()}"></p>
+      <div class="info3">
+        <div class="info"><small>Prioridade</small><span class="meter" th:attr="data-n=${t.prio().peso}"><i></i><i></i><i></i></span><b th:text="${t.prio().rotulo}"></b></div>
+        <div class="info"><small>Urgência</small><span class="meter" th:attr="data-n=${t.urg().peso}"><i></i><i></i><i></i></span><b th:text="${t.urg().rotulo}"></b></div>
+        <div class="info"><small>Complexidade</small><span class="meter" th:attr="data-n=${t.comp().peso}"><i></i><i></i><i></i></span><b th:text="${t.comp().rotulo}"></b></div>
+      </div>
+      <div class="bar"><i th:style="${'width:' + t.percentual() + '%'}"></i></div>
+      <div class="tags">
+        <span class="status" th:each="a : ${t.atribuicoes()}" th:classappend="${a.status()}">
+          <span th:text="${(a.status() == 'feita' ? '✓ ' : a.status() == 'andamento' ? '' : '○ ') + a.membro() + (a.gasto().isEmpty() ? '' : ' · ' + a.gasto())}"></span>
+          <span class="live-dot" th:if="${a.status() == 'andamento'}"></span>
+          <span class="cont" th:if="${a.status() == 'andamento'}" data-estado="rodando" th:attr="data-fim=${a.fimMs()}">00:00:00</span>
+        </span>
+      </div>
+      <div class="acts" th:if="${t.podeRemover()}">
+        <form method="post" th:action="@{/grupos/{id}/tarefas/{g}/remover(id=${p.grupo().id()},g=${t.gtid()})}" onsubmit="return confirm('Remover esta tarefa de todos os membros?')"><button class="btn s d">🗑 Remover de todos</button></form>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

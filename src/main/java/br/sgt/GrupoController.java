@@ -1,5 +1,6 @@
 package br.sgt;
 
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import java.time.LocalDate;
 import java.util.List;
@@ -61,18 +62,27 @@ public class GrupoController {
         return "grupo";
     }
 
+    /** Pedaço da página que o navegador atualiza sozinho (a cada poucos segundos), sem recarregar. */
+    @GetMapping("/{id}/vivo")
+    String vivo(@PathVariable String id, HttpSession s, Model m, HttpServletResponse resp) {
+        resp.setHeader("Cache-Control", "no-store");
+        m.addAttribute("p", grupos.painel(uid(s), id));
+        return "grupo-regioes :: vivo";
+    }
+
     @PostMapping("/{id}/tarefas")
     String novaTarefa(@PathVariable String id, @RequestParam String nome, @RequestParam(defaultValue = "") String descricao,
                       @RequestParam int prioridade, @RequestParam int urgencia, @RequestParam int complexidade,
-                      @RequestParam int duracao, @RequestParam String periodo,
+                      @RequestParam(defaultValue = "0") int horas, @RequestParam(defaultValue = "0") int minutos,
+                      @RequestParam(defaultValue = "0") int segundos, @RequestParam String periodo,
                       @RequestParam(required = false) String dia, @RequestParam(required = false) List<String> atribuidos,
                       HttpSession s) {
         LocalDate quando = null;
         if (dia != null && !dia.isBlank()) {
             try { quando = LocalDate.parse(dia); } catch (Exception e) { throw new ErroSupabase(400, "Data inválida."); }
         }
-        Map<String, Object> d = TarefaService.dados(nome, descricao, Nivel.de(prioridade), Nivel.de(urgencia),
-                Nivel.de(complexidade), duracao, Periodo.de(periodo), quando);
+        Map<String, Object> d = TarefaService.dadosSeg(nome, descricao, Nivel.de(prioridade), Nivel.de(urgencia),
+                Nivel.de(complexidade), TarefaService.totalSeg(horas, minutos, segundos), Periodo.de(periodo), quando);
         grupos.criarTarefa(uid(s), id, d, atribuidos);
         int n = atribuidos == null ? 0 : atribuidos.size();
         s.setAttribute("aviso", "Tarefa enviada para " + n + (n == 1 ? " pessoa." : " pessoas."));

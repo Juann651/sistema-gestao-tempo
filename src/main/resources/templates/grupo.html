@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>SGT · Grupo</title><link rel="stylesheet" th:href="@{/style.css}"></head>
-<body th:attr="data-agora=${agora}">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>SGT · Grupo</title><link rel="icon" type="image/svg+xml" th:href="@{/logo.svg}"><link rel="stylesheet" th:href="@{/style.css}"></head>
+<body th:attr="data-agora=${agora},data-vivo=${'/grupos/' + p.grupo().id() + '/vivo'}">
 <header th:replace="~{fragmentos :: topo(${pagina})}"></header>
 <main>
 <div class="pagina-titulo">
   <div class="linha"><h1 th:text="${p.grupo().nome()}"></h1><span class="pill n3" th:text="${p.grupo().tipoIcone() + ' ' + p.grupo().tipoRotulo()}"></span></div>
-  <p><a th:href="@{/grupos}">← Todos os grupos</a></p>
+  <p><a th:href="@{/grupos}">← Todos os grupos</a> · <span class="mu">esta página atualiza sozinha</span></p>
 </div>
 <div th:replace="~{fragmentos :: aviso}"></div>
 <div th:replace="~{fragmentos :: faixaFoco}"></div>
@@ -14,12 +14,7 @@
 <div class="cols">
   <div class="card">
     <h2>👥 Pessoas</h2>
-    <div class="membros">
-      <div class="membro" th:each="m : ${p.membros()}">
-        <span th:text="${m.nome() + (m.voce() ? ' (você)' : '') + (m.dono() ? ' · responsável' : '')}"></span>
-        <form method="post" th:if="${p.dono() and !m.dono()}" th:action="@{/grupos/{id}/membros/{u}/remover(id=${p.grupo().id()},u=${m.userId()})}" onsubmit="return confirm('Remover esta pessoa do grupo?')"><button class="btn s d" title="Remover do grupo">✕</button></form>
-      </div>
-    </div>
+    <div th:replace="~{grupo-regioes :: regiaoMembros}"></div>
     <p class="mu" th:if="${!p.veProgresso()}" style="margin-top:12px">Nesta turma, só o responsável vê o progresso de todos. Você vê apenas as suas tarefas.</p>
   </div>
 
@@ -30,6 +25,8 @@
     <form method="post" th:if="${p.dono()}" th:action="@{/grupos/{id}/codigo(id=${p.grupo().id()})}" onsubmit="return confirm('Gerar um novo código? O atual deixa de funcionar.')"><div class="acts"><button class="btn s">Gerar novo código</button></div></form>
   </div>
 </div>
+
+<div th:replace="~{grupo-regioes :: regiaoAoVivo}"></div>
 
 <div class="card" th:if="${p.podeCriar()}">
   <form method="post" th:action="@{/grupos/{id}/tarefas(id=${p.grupo().id()})}">
@@ -62,49 +59,20 @@
     <div class="opcoes auto">
       <label class="op" th:each="t : ${periodos}"><input type="radio" name="periodo" th:value="${t.codigo}" th:checked="${t.name() == 'MANHA'}"><span class="cardop"><span class="ico" th:text="${t.icone}"></span><b th:text="${t.rotulo}"></b></span></label>
     </div>
-    <div class="row2">
-      <label>Duração prevista (min)<input type="number" name="duracao" min="1" required value="60"></label>
-      <label>Dia da tarefa<input type="date" name="dia" th:value="${hojeIso}" th:min="${hojeIso}"></label>
+
+    <div class="campo-t">Duração prevista</div>
+    <div class="hms">
+      <label>Horas<input type="number" name="horas" min="0" max="24" value="1" inputmode="numeric"></label>
+      <label>Minutos<input type="number" name="minutos" min="0" max="59" value="0" inputmode="numeric"></label>
+      <label>Segundos<input type="number" name="segundos" min="0" max="59" value="0" inputmode="numeric"></label>
     </div>
+    <label>Dia da tarefa<input type="date" name="dia" th:value="${hojeIso}" th:min="${hojeIso}"></label>
     <div class="acts"><button class="btn p">Enviar para o grupo</button></div>
     </fieldset>
   </form>
 </div>
 
-<h2 style="margin:26px 0 0">Tarefas do grupo</h2>
-<div class="card" th:if="${#lists.isEmpty(p.tarefas())}"><p class="mu" style="margin:0" th:text="${p.podeCriar() ? 'Ainda não há tarefas. Crie a primeira acima.' : 'Você ainda não recebeu tarefas neste grupo.'}"></p></div>
-<div class="tcard" th:each="t : ${p.tarefas()}">
-  <div class="tc-head" data-toggle tabindex="0" role="button" aria-expanded="false">
-    <div class="tc-main">
-      <b th:text="${t.nome()}"></b>
-      <div class="tc-sub">
-        <span class="chip" th:text="${t.turno().icone + ' ' + t.turno().rotulo}"></span>
-        <span class="chip" th:text="${'📅 ' + t.dia()}"></span>
-        <span class="chip" th:text="${'⏱ ' + t.duracao()}"></span>
-      </div>
-    </div>
-    <div class="tc-lado">
-      <span class="pill" th:classappend="${t.feitas() == t.total()} ? 'ok'" th:text="${t.feitas() + ' de ' + t.total() + (p.veProgresso() ? ' concluíram' : ' concluída')}"></span>
-      <span class="tc-seta">▾</span>
-    </div>
-  </div>
-  <div class="tc-corpo">
-    <p class="mu" style="margin:0" th:if="${!t.descricao().isBlank()}" th:text="${t.descricao()}"></p>
-    <div class="info3">
-      <div class="info"><small>Prioridade</small><span class="meter" th:attr="data-n=${t.prio().peso}"><i></i><i></i><i></i></span><b th:text="${t.prio().rotulo}"></b></div>
-      <div class="info"><small>Urgência</small><span class="meter" th:attr="data-n=${t.urg().peso}"><i></i><i></i><i></i></span><b th:text="${t.urg().rotulo}"></b></div>
-      <div class="info"><small>Complexidade</small><span class="meter" th:attr="data-n=${t.comp().peso}"><i></i><i></i><i></i></span><b th:text="${t.comp().rotulo}"></b></div>
-    </div>
-    <div class="bar"><i th:style="${'width:' + t.percentual() + '%'}"></i></div>
-    <div class="tags">
-      <span class="status" th:each="a : ${t.atribuicoes()}" th:classappend="${a.status()}"
-            th:text="${(a.status() == 'feita' ? '✓ ' : a.status() == 'andamento' ? '⏱ ' : '○ ') + a.membro() + (a.gasto().isEmpty() ? '' : ' · ' + a.gasto())}"></span>
-    </div>
-    <div class="acts" th:if="${t.podeRemover()}">
-      <form method="post" th:action="@{/grupos/{id}/tarefas/{g}/remover(id=${p.grupo().id()},g=${t.gtid()})}" onsubmit="return confirm('Remover esta tarefa de todos os membros?')"><button class="btn s d">🗑 Remover de todos</button></form>
-    </div>
-  </div>
-</div>
+<div th:replace="~{grupo-regioes :: regiaoTarefas}"></div>
 
 <div class="card perigo" style="margin-top:26px">
   <h2>Zona de cuidado</h2>
@@ -119,4 +87,5 @@
 </div>
 </main>
 <div th:replace="~{fragmentos :: rodape}"></div>
+
 </body></html>

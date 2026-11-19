@@ -185,3 +185,9 @@ create index if not exists tarefas_grupo on public.tarefas (grupo_id, grupo_tare
 -- RLS ligada e SEM políticas: só o servidor (service_role) lê e grava grupos e membros.
 alter table public.grupos         enable row level security;
 alter table public.grupo_membros  enable row level security;
+
+-- =====================================================================================================
+-- 7) DURAÇÃO EM SEGUNDOS (horas, minutos e segundos no cadastro)  (pode rodar de novo sem problema)
+--    A coluna "duracao" (minutos) continua sendo preenchida; "duracao_seg" guarda o valor exato.
+-- =====================================================================================================
+alter table public.tarefas add column if not exists duracao_seg integer check (duracao_seg is null or duracao_seg > 0);

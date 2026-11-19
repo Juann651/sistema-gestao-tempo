@@ -51,6 +51,43 @@
     if ((e.key === 'Enter' || e.key === ' ') && e.target.hasAttribute && e.target.hasAttribute('data-toggle')) { e.preventDefault(); alternar(e.target); }
   });
 
+  // ---------- grupo ao vivo: atualiza as regiões da página sozinho, sem recarregar ----------
+  var vivoUrl = document.body.getAttribute('data-vivo');
+  if (vivoUrl && window.fetch) {
+    var buscando = false;
+    var atualizarVivo = function () {
+      if (document.hidden || buscando) return;
+      buscando = true;
+      fetch(vivoUrl, { credentials: 'same-origin', cache: 'no-store' })
+        .then(function (r) {
+          if (r.redirected && r.url.indexOf('/login') >= 0) { location.href = '/login'; return null; }
+          return r.ok ? r.text() : null;
+        })
+        .then(function (html) {
+          if (!html || html.indexOf('data-regiao') < 0) return;
+          var caixa = document.createElement('div');
+          caixa.innerHTML = html;
+          caixa.querySelectorAll('[data-regiao]').forEach(function (novo) {
+            var nome = novo.getAttribute('data-regiao');
+            var atual = document.querySelector('[data-regiao="' + nome + '"]');
+            if (!atual || atual.getAttribute('data-sig') === novo.getAttribute('data-sig')) return;   // nada mudou
+            var abertos = [];
+            atual.querySelectorAll('.tcard.aberto').forEach(function (c) { abertos.push(c.getAttribute('data-gtid')); });
+            atual.replaceWith(novo);
+            abertos.forEach(function (g) {
+              var c = novo.querySelector('.tcard[data-gtid="' + g + '"]');
+              if (c) { c.classList.add('aberto'); var h = c.querySelector('[data-toggle]'); if (h) h.setAttribute('aria-expanded', 'true'); }
+            });
+          });
+          tick();
+        })
+        .catch(function () { /* sem internet por um instante: tenta de novo no próximo ciclo */ })
+        .then(function () { buscando = false; });
+    };
+    setInterval(atualizarVivo, 4000);
+    document.addEventListener('visibilitychange', function () { if (!document.hidden) atualizarVivo(); });
+  }
+
   // ---------- pop-up de tempo gasto ----------
   var dlg = document.getElementById('dlgGasto');
   var frm = document.getElementById('frmGasto');

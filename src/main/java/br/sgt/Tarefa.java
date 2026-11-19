@@ -23,7 +23,8 @@ public record Tarefa(String id, String nome, String descricao, int prioridade, i
                      @JsonProperty("user_id") String userId,
                      @JsonProperty("grupo_id") String grupoId,
                      @JsonProperty("grupo_tarefa_id") String grupoTarefaId,
-                     @JsonProperty("criada_por") String criadaPor) {
+                     @JsonProperty("criada_por") String criadaPor,
+                     @JsonProperty("duracao_seg") Integer duracaoSegBanco) {
     /** Tarefa atribuída por um grupo (cada membro tem a sua própria cópia, com seu contador e seu modo foco). */
     public boolean doGrupo() { return grupoId != null && !grupoId.isBlank(); }
     // ---------- dia planejado ----------
@@ -51,7 +52,8 @@ public record Tarefa(String id, String nome, String descricao, int prioridade, i
     public Nivel comp() { return Nivel.de(complexidade); }
 
     // ---------- tempo ----------
-    public int duracaoSeg() { return duracao * 60; }
+    /** Duração prevista em segundos. Tarefas antigas só têm minutos (coluna "duracao"). */
+    public int duracaoSeg() { return duracaoSegBanco != null && duracaoSegBanco > 0 ? duracaoSegBanco : duracao * 60; }
     public String duracaoFmt() { return Tempo.legivel(duracaoSeg()); }
     public String gastoFmt() { return Tempo.legivel(tempoGasto); }
     /** Quem fez a tarefa: quem concluiu; se não houver, o dono. */
